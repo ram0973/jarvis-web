@@ -31,6 +31,13 @@ export const authServer = betterAuth({
       // The schema also defaults ids to uuid — keep both in sync so a row created by either side looks the same.
       generateId: 'uuid',
     },
+    ipAddress: {
+      // Behind the proxy every request arrives from a private address (Caddy's container, or localhost in dev), so the
+      // rightmost `x-forwarded-for` hops can be trusted. Without this, better-auth cannot name a client and rate
+      // limiting collapses into one shared bucket for every visitor.
+      ipAddressHeaders: ['x-forwarded-for'],
+      trustedProxies: ['127.0.0.1', '::1', '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16'],
+    },
   },
   emailAndPassword: {
     enabled: true,

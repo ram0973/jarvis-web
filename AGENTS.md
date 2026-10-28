@@ -81,6 +81,8 @@
 | `src/ui/`                                             | переиспользуемые компоненты (сейчас `ErrorBoundary`)                                                   |
 | `prisma/schema.prisma`, `prisma/migrations/`          | схема и миграции Postgres                                                                              |
 | `docker-compose.yml`                                  | `db` (Postgres 17) + `app` (образ приложения); тома `jarvis_db`, `jarvis_uploads`                      |
+| `deploy/`                                             | прод: `docker-compose.prod.yml` (db + app + caddy, тома), `Caddyfile`, шаблон `deploy/.env`            |
+| `docs/deploy.md`                                      | runbook прода: сервер, firewall, секреты, обновления, бэкапы, вариант с Postgres на хосте              |
 | `src/generated/**`                                    | кодогенерация Point0 и Prisma — **не править руками**                                                  |
 
 ## Point0 за десять строк
@@ -113,6 +115,9 @@
   сессией — делай так же (на этом уже один раз утёк токен в `/profile`).
 - `authClient` — только браузер и только мутации (вход, регистрация, выход). Чтение — через `getMeQuery`, чтобы у всех
   потребителей был один кэш и одно состояние.
+- **IP клиента берётся из `x-forwarded-for`, но только от приватных адресов** (`advanced.ipAddress` в
+  `src/lib/auth/server.ts`): приложение всегда стоит за прокси (Caddy в проде, dev-сервер локально). Без этого
+  better-auth не может определить клиента, и rate limiting превращается в один общий бакет на всех посетителей.
 - **Гейтить страницы и мутации — плагинами, а не middleware** (middleware серверный и не защищает клиентскую
   навигацию). Готовые гейты в `src/lib/auth/plugins.ts`:
 
@@ -172,7 +177,10 @@
 - **Статья грузится своим `.loader`, а не `.with(query)`**: только так SSR реально ждёт данные, иначе страница
   отдаёт «Please wait» и догружается на клиенте. Оглавление считается на сервере тем же `github-slugger`, чьи id
   ставит `rehype-slug`.
-- Markdown: `react-markdown` + `remark-gfm` + `rehype-slug` + `rehype-highlight`; raw HTML намеренно выключен.
+- Markdown: `react-markdown` + `remark-gfm` + `rehype-slug` + `rehype-highlight`. Плюс `rehype-raw` с
+  `rehype-sanitize`: редактор сериализует вставленную картинку как `<img …>`, поэтому сырой HTML рендерится, но
+  только после санитайзера (белый список тегов и атрибутов; `<script>`, `on*` и `javascript:` вырезаются).
+  `rehype-slug` и `rehype-highlight` идут **после** него, иначе санитайзер срезал бы их id и классы `hljs`.
   Подсветка кода — тема `github-dark` из `highlight.js`, подключена в `src/styles/index.css`.
 - **Редактор** — `@mdxeditor/editor`: WYSIWYG с переключением в markdown-исходник и вставкой картинки из тулбара.
   Он браузерный, поэтому страницы `/admin/wiki/new` и `/admin/wiki/:id` помечены `.clientOnly()` — импорт редактора
