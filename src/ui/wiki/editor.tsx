@@ -31,46 +31,50 @@ import { wikiImageUploadMutation } from '@/lib/wiki/upload'
 import { buildTree, flattenTree, slugify } from '@/lib/wiki/tree'
 import { FormError, TextField } from '@/ui/form'
 import { navigate } from '@/lib/navigation'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
-type WikiEditorProps = { id?: string }
+type EditorPage = {
+  id: string
+  slug: string
+  title: string
+  content: string
+  parentId: string | null
+  position: number
+}
 
 /**
- * The wiki page editor. MDXEditor gives a WYSIWYG surface plus a markdown-source toggle; images uploaded from the
- * toolbar go through `wikiImageUploadMutation` and come back as `/uploads/wiki/…` URLs, which is exactly what the
- * markdown stores.
+ * The page loader. It waits for the page record and only then mounts the form: MDXEditor takes `markdown` as its
+ * initial document, so mounting it with an empty string and patching the prop later leaves the article body blank.
  */
-export default function WikiEditor({ id }: WikiEditorProps) {
+export default function WikiEditor({ id }: { id?: string }) {
   const pageQuery = adminWikiPageQuery.useQuery({ id: id ?? '' })
+
+  if (pageQuery.isLoading) {
+    return <p className="text-sm text-slate-500">Loading page…</p>
+  }
+  if (pageQuery.error) {
+    return <FormError message={pageQuery.error.message} />
+  }
+
+  const page = pageQuery.data?.page ?? null
+  return <EditorForm key={page?.id ?? 'new'} id={id} page={page} />
+}
+
+/** The form itself: every field starts from the page record, so the first render already has the article body. */
+const EditorForm = ({ id, page }: { id?: string; page: EditorPage | null }) => {
   const listQuery = adminWikiListQuery.useQuery()
   const create = wikiPageCreateMutation.useMutation()
   const update = wikiPageUpdateMutation.useMutation()
   const remove = wikiPageDeleteMutation.useMutation()
   const upload = wikiImageUploadMutation.useMutation()
 
-  const [title, setTitle] = useState('')
-  const [slug, setSlug] = useState('')
-  const [slugTouched, setSlugTouched] = useState(false)
-  const [parentId, setParentId] = useState<string>('')
-  const [position, setPosition] = useState(0)
-  const [content, setContent] = useState('')
+  const [title, setTitle] = useState(page?.title ?? '')
+  const [slug, setSlug] = useState(page?.slug ?? '')
+  const [slugTouched, setSlugTouched] = useState(page !== null)
+  const [parentId, setParentId] = useState<string>(page?.parentId ?? '')
+  const [position, setPosition] = useState(page?.position ?? 0)
+  const [content, setContent] = useState(page?.content ?? '')
   const [error, setError] = useState<string | null>(null)
-  const [loaded, setLoaded] = useState(false)
-
-  const page = pageQuery.data?.page ?? null
-
-  // Load the page into local state once — afterwards the form owns the values (MDXEditor is controlled by `content`).
-  useEffect(() => {
-    if (!page || loaded) {
-      return
-    }
-    setTitle(page.title)
-    setSlug(page.slug)
-    setParentId(page.parentId ?? '')
-    setPosition(page.position)
-    setContent(page.content)
-    setLoaded(true)
-  }, [page, loaded])
 
   const parentOptions = useMemo(() => {
     const pages = listQuery.data?.pages ?? []
@@ -131,10 +135,6 @@ export default function WikiEditor({ id }: WikiEditorProps) {
   const uploadImage = async (file: File) => {
     const result = await upload.mutateAsync({ file })
     return result.url
-  }
-
-  if (pageQuery.isLoading) {
-    return <p className="text-sm text-slate-500">Loading page…</p>
   }
 
   return (
