@@ -20,7 +20,12 @@ COPY . .
 # The point0 build generates its own points/routes; the Prisma client is generated separately and then bundled.
 RUN bun run prisma:generate && bun run build
 
-FROM oven/bun:1 AS runner
+# Source maps are for debugging in dev — ~45 MB of nothing in the image. Stripped here, in the build stage, so the
+# layers of the runner never contain them; only a trailing `sourceMappingURL` comment is dropped (a minified chunk is
+# one line, so line-based editing would cut the code), otherwise Bun warns on start that it cannot decode the map.
+RUN find dist -name '*.map' -delete && bun -e "const fs = require('node:fs'); for (const file of new Bun.Glob('dist/**/*.js').scanSync('.')) { const text = fs.readFileSync(file, 'utf8'); const stripped = text.replace(/\/\/# sourceMappingURL=\S+\s*$/, ''); if (stripped !== text) fs.writeFileSync(file, stripped) }"
+
+FROM oven/bun:1-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
