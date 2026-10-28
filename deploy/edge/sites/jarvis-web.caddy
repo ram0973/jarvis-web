@@ -1,0 +1,7 @@
+# jarvis-web — the wiki. The name after `reverse_proxy` is the network alias the project's app service declares on
+# the `edge` network (see the `networks:` block in deploy/docker-compose.prod.yml).
+wiki.example.com {
+	import security_headers
+	encode zstd gzip
+	reverse_proxy jarvis-web:3000
+}

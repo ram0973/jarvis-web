@@ -1,0 +1,16 @@
+{
+	# Let's Encrypt account; one address for every site served by this edge.
+	email {$ACME_EMAIL}
+}
+
+# Headers every site should send. Sites import it: `import security_headers`.
+(security_headers) {
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
+}
+
+# One file per project in `sites/` — adding a project is adding a file, not editing this config.
+import /etc/caddy/sites/*.caddy

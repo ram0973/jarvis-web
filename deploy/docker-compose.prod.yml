@@ -1,5 +1,8 @@
 name: jarvis-web
 
+# The project half of the deployment: its own Postgres and app, no public ports.
+# `edge` (../../edge/docker-compose.yml) is the only thing that listens on :80/:443 and holds the certificates.
+
 services:
   db:
     image: postgres:17-alpine
@@ -29,42 +32,29 @@ services:
       NODE_ENV: production
       SERVER_PORT: 3000
       UPLOADS_DIR: /data/uploads
-    # Bound to loopback: TLS and the public port belong to Caddy.
-    ports:
-      - '127.0.0.1:${APP_PORT:-3000}:3000'
     volumes:
       - uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
+    networks:
+      default: {}
+      edge:
+        # This alias is what Caddy proxies to: `reverse_proxy jarvis-web:3000` in deploy/edge/sites/*.caddy.
+        aliases:
+          - jarvis-web
     logging:
       driver: json-file
       options:
         max-size: '10m'
         max-file: '3'
 
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - '80:80'
-      - '443:443'
-    environment:
-      DOMAIN: ${DOMAIN:?set DOMAIN in deploy/.env}
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - app
-    logging:
-      driver: json-file
-      options:
-        max-size: '10m'
-        max-file: '3'
+networks:
+  # Created by the edge stack (or once by hand: `docker network create edge`). Every project joins the same one.
+  edge:
+    external: true
+    name: edge
 
 volumes:
   db_data:
   uploads:
-  caddy_data:
-  caddy_config:

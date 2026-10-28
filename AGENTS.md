@@ -45,45 +45,45 @@
 
 ## Карта проекта
 
-| Путь                                                  | Роль                                                                                                   |
-| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `src/engine.ts`                                       | конфиг Point0: SSR, порты, пути кодогенерации, список клиентских env-переменных                        |
-| `src/index.server.ts` → `src/app.server.ts`           | серверный вход: preload → `serverEnv.validate()` → `engine.serve()`                                    |
-| `src/index.client.tsx` → `src/app.client.tsx`         | клиентский вход: провайдеры (react-query, unhead), роутер, `mount()`                                   |
-| `src/lib/root.tsx`                                    | корневая точка: transformer, класс ошибок, prefetch, loading/error UI, middleware, OpenAPI             |
-| `src/layouts/general.tsx`                             | общий layout: шапка, навигация, контейнер                                                              |
-| `src/pages/home.tsx`                                  | главная вики `/`: карточки разделов дерева                                                             |
-| `src/pages/about.mdx`                                 | страница `/about` в MDX                                                                                |
-| `src/lib/navigation.ts`                               | типизированные `Link` / `NavLink` / `navigate` над сгенерированными роутами                            |
-| `src/lib/prisma.ts`                                   | Prisma-клиент через `PrismaPg` (Postgres) — только сервер                                              |
-| `src/lib/auth/server.ts`                              | `authServer`: better-auth + Prisma-адаптер, admin-плагин, секрет; `getMe` — единственное чтение сессии |
-| `src/lib/auth/api.ts`                                 | `getMeQuery` — клиентский `me`, `staleTime: Infinity`, обновляется вручную после входа/выхода          |
-| `src/lib/auth/client.ts`                              | `authClient` (только браузер, только мутации) и `signOut()`                                            |
-| `src/lib/auth/plugins.ts`                             | гейты: `mePlugin`, `authorizedOnlyPlugin`, `redirectUnauthorizedPlugin`, `adminOnlyPlugin`             |
-| `src/lib/auth/init.ts`                                | создание/повышение первого админа из `ADMIN_CREDENTIALS` при старте                                    |
-| `src/pages/sign-in.tsx`, `sign-up.tsx`                | формы входа и регистрации (better-auth, cookie)                                                        |
-| `src/pages/profile.tsx`                               | пример страницы под гейтом `redirectUnauthorizedPlugin`                                                |
-| `src/pages/admin/layout.tsx`, `home.tsx`, `users.tsx` | каркас админки (префикс `/admin` + гейт), обзор, управление пользователями                             |
-| `src/lib/admin/users.ts`                              | админские query/mutation: список, роли, бан (каждый под `adminOnlyPlugin`)                             |
-| `src/layouts/wiki.tsx`                                | каркас вики: залипающее дерево слева + статья справа                                                   |
-| `src/lib/wiki/tree.ts`                                | чистые хелперы: `buildTree`, `flattenTree`, `pathTo`, `slugify` (транслит кириллицы)                   |
-| `src/lib/wiki/api.ts`                                 | `wikiTreeQuery`, админский список/страница, CRUD-мутации; Prisma — только внутри loader'ов             |
-| `src/lib/wiki/upload.ts`                              | мутация загрузки картинки + action `GET /uploads/*`                                                    |
-| `src/lib/wiki/storage.ts`                             | серверное хранение файлов (`server-only`): `<UPLOADS_DIR>/<app>/<год>/<месяц>/`                        |
-| `src/pages/wiki/page.tsx`                             | статья `/wiki/:slug`: хлебные крошки, TOC, markdown                                                    |
-| `src/pages/admin/wiki/`                               | список страниц, создание, редактор (`/admin/wiki`, `/admin/wiki/new`, `/admin/wiki/:id`)               |
-| `src/ui/wiki/`                                        | `sidebar`, `markdown`, `toc`, `editor` (MDXEditor)                                                     |
-| `src/ui/form.tsx`                                     | `TextField` / `FormError` / `SubmitButton` — общие примитивы форм                                      |
-| `src/lib/env/`                                        | zod-схемы env и ленивая валидация                                                                      |
-| `src/lib/error.ts`                                    | `AppError` (Error0 + плагины status/code/meta/redirect)                                                |
-| `src/lib/query-client.ts`                             | общий `QueryClient`                                                                                    |
-| `src/styles/index.css`                                | Tailwind v4 + typography                                                                               |
-| `src/ui/`                                             | переиспользуемые компоненты (сейчас `ErrorBoundary`)                                                   |
-| `prisma/schema.prisma`, `prisma/migrations/`          | схема и миграции Postgres                                                                              |
-| `docker-compose.yml`                                  | `db` (Postgres 17) + `app` (образ приложения); тома `jarvis_db`, `jarvis_uploads`                      |
-| `deploy/`                                             | прод: `docker-compose.prod.yml` (db + app + caddy, тома), `Caddyfile`, шаблон `deploy/.env`            |
-| `docs/deploy.md`                                      | runbook прода: сервер, firewall, секреты, обновления, бэкапы, вариант с Postgres на хосте              |
-| `src/generated/**`                                    | кодогенерация Point0 и Prisma — **не править руками**                                                  |
+| Путь                                                  | Роль                                                                                                                         |
+| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| `src/engine.ts`                                       | конфиг Point0: SSR, порты, пути кодогенерации, список клиентских env-переменных                                              |
+| `src/index.server.ts` → `src/app.server.ts`           | серверный вход: preload → `serverEnv.validate()` → `engine.serve()`                                                          |
+| `src/index.client.tsx` → `src/app.client.tsx`         | клиентский вход: провайдеры (react-query, unhead), роутер, `mount()`                                                         |
+| `src/lib/root.tsx`                                    | корневая точка: transformer, класс ошибок, prefetch, loading/error UI, middleware, OpenAPI                                   |
+| `src/layouts/general.tsx`                             | общий layout: шапка, навигация, контейнер                                                                                    |
+| `src/pages/home.tsx`                                  | главная вики `/`: карточки разделов дерева                                                                                   |
+| `src/pages/about.mdx`                                 | страница `/about` в MDX                                                                                                      |
+| `src/lib/navigation.ts`                               | типизированные `Link` / `NavLink` / `navigate` над сгенерированными роутами                                                  |
+| `src/lib/prisma.ts`                                   | Prisma-клиент через `PrismaPg` (Postgres) — только сервер                                                                    |
+| `src/lib/auth/server.ts`                              | `authServer`: better-auth + Prisma-адаптер, admin-плагин, секрет; `getMe` — единственное чтение сессии                       |
+| `src/lib/auth/api.ts`                                 | `getMeQuery` — клиентский `me`, `staleTime: Infinity`, обновляется вручную после входа/выхода                                |
+| `src/lib/auth/client.ts`                              | `authClient` (только браузер, только мутации) и `signOut()`                                                                  |
+| `src/lib/auth/plugins.ts`                             | гейты: `mePlugin`, `authorizedOnlyPlugin`, `redirectUnauthorizedPlugin`, `adminOnlyPlugin`                                   |
+| `src/lib/auth/init.ts`                                | создание/повышение первого админа из `ADMIN_CREDENTIALS` при старте                                                          |
+| `src/pages/sign-in.tsx`, `sign-up.tsx`                | формы входа и регистрации (better-auth, cookie)                                                                              |
+| `src/pages/profile.tsx`                               | пример страницы под гейтом `redirectUnauthorizedPlugin`                                                                      |
+| `src/pages/admin/layout.tsx`, `home.tsx`, `users.tsx` | каркас админки (префикс `/admin` + гейт), обзор, управление пользователями                                                   |
+| `src/lib/admin/users.ts`                              | админские query/mutation: список, роли, бан (каждый под `adminOnlyPlugin`)                                                   |
+| `src/layouts/wiki.tsx`                                | каркас вики: залипающее дерево слева + статья справа                                                                         |
+| `src/lib/wiki/tree.ts`                                | чистые хелперы: `buildTree`, `flattenTree`, `pathTo`, `slugify` (транслит кириллицы)                                         |
+| `src/lib/wiki/api.ts`                                 | `wikiTreeQuery`, админский список/страница, CRUD-мутации; Prisma — только внутри loader'ов                                   |
+| `src/lib/wiki/upload.ts`                              | мутация загрузки картинки + action `GET /uploads/*`                                                                          |
+| `src/lib/wiki/storage.ts`                             | серверное хранение файлов (`server-only`): `<UPLOADS_DIR>/<app>/<год>/<месяц>/`                                              |
+| `src/pages/wiki/page.tsx`                             | статья `/wiki/:slug`: хлебные крошки, TOC, markdown                                                                          |
+| `src/pages/admin/wiki/`                               | список страниц, создание, редактор (`/admin/wiki`, `/admin/wiki/new`, `/admin/wiki/:id`)                                     |
+| `src/ui/wiki/`                                        | `sidebar`, `markdown`, `toc`, `editor` (MDXEditor)                                                                           |
+| `src/ui/form.tsx`                                     | `TextField` / `FormError` / `SubmitButton` — общие примитивы форм                                                            |
+| `src/lib/env/`                                        | zod-схемы env и ленивая валидация                                                                                            |
+| `src/lib/error.ts`                                    | `AppError` (Error0 + плагины status/code/meta/redirect)                                                                      |
+| `src/lib/query-client.ts`                             | общий `QueryClient`                                                                                                          |
+| `src/styles/index.css`                                | Tailwind v4 + typography                                                                                                     |
+| `src/ui/`                                             | переиспользуемые компоненты (сейчас `ErrorBoundary`)                                                                         |
+| `prisma/schema.prisma`, `prisma/migrations/`          | схема и миграции Postgres                                                                                                    |
+| `docker-compose.yml`                                  | `db` (Postgres 17) + `app` (образ приложения); тома `jarvis_db`, `jarvis_uploads`                                            |
+| `deploy/`                                             | прод: `docker-compose.prod.yml` (db + app, общая сеть `edge`), `edge/` (Caddy на весь VPS + `sites/*.caddy`), шаблоны `.env` |
+| `docs/deploy.md`                                      | runbook прода: edge + проекты, второй проект, обновления, бэкапы, Coolify, Postgres на хосте                                 |
+| `src/generated/**`                                    | кодогенерация Point0 и Prisma — **не править руками**                                                                        |
 
 ## Point0 за десять строк
 

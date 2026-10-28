@@ -1,0 +1,37 @@
+name: edge
+
+# One Caddy for the whole VPS: it owns :80/:443, holds the certificates and proxies to every project by name.
+# Each project joins the external `edge` network with a unique alias (see deploy/docker-compose.prod.yml), so adding
+# a site never touches the project's own compose file — only a new file in `sites/`.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      ACME_EMAIL: ${ACME_EMAIL:?set ACME_EMAIL in deploy/edge/.env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./sites:/etc/caddy/sites:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
+networks:
+  edge:
+    name: edge
+    driver: bridge
+
+volumes:
+  caddy_data:
+  caddy_config:

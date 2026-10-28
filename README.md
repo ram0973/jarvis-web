@@ -82,18 +82,26 @@ APP_PORT=3100 APP_URL=http://localhost:3100 docker compose up -d --build app
 
 ## Deploy to a server
 
-One VPS, one compose file: Postgres, the app image and Caddy (automatic Let's Encrypt TLS) in containers.
-Postgres is not published to the host; the app is bound to loopback and only Caddy talks to it.
+Two layers, so one VPS can host several projects:
+
+- **edge** — a single Caddy (`deploy/edge/`) that owns `:80`/`:443`, gets Let's Encrypt certificates and proxies each
+  domain to a container name on the shared `edge` network;
+- **project** — this repo's `deploy/docker-compose.prod.yml`: its own Postgres and app, no published ports at all.
 
 ```bash
-cp deploy/env.example deploy/.env      # fill DOMAIN, secrets, DATABASE_URL (host `db`)
+# once per VPS
+cp deploy/edge/env.example deploy/edge/.env            # ACME email
+docker compose -f deploy/edge/docker-compose.yml up -d
+
+# per project
+cp deploy/env.example deploy/.env                       # secrets + public URLs
 chmod 600 deploy/.env
 docker compose -f deploy/docker-compose.prod.yml up -d --build
-docker compose -f deploy/docker-compose.prod.yml logs -f app
 ```
 
-Migrations run on container start, and images live on the `jarvis-web_uploads` volume. The full runbook — server
-setup, firewall, DNS, backups, updates and the host-Postgres alternative — is in [docs/deploy.md](./docs/deploy.md).
+Adding another project is a new `deploy/edge/sites/<name>.caddy` plus a unique network alias in that project's compose.
+The full runbook — DNS, firewall, backups, updates, the host-Postgres variant and when to use
+[Coolify](https://coolify.io) instead — is in [docs/deploy.md](./docs/deploy.md).
 
 ## For a real app
 
