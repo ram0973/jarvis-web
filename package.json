@@ -24,7 +24,8 @@
     "prisma:migrate:dev": "cross-env NODE_ENV=development prisma migrate dev",
     "prisma:migrate:deploy": "cross-env NODE_ENV=development prisma migrate deploy",
     "seed": "cross-env NODE_ENV=development bun --preload ./src/preload.ts ./src/lib/seed.ts",
-    "setup": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed"
+    "setup": "bun run prisma:migrate:deploy && bun run prisma:generate && point0 generate && bun run seed",
+    "check:ui": "bun scripts/browser-check.ts"
   },
   "dependencies": {
     "@1gr14/error0": "^0.4.8",
@@ -64,6 +65,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@faker-js/faker": "^10.4.0",
     "@point0/docs": "^0.4.2",
     "@svgr/core": "^8.1.0",
     "@svgr/plugin-jsx": "^8.1.0",
@@ -71,11 +73,11 @@
     "@types/bun": "^1.4.0",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@faker-js/faker": "^10.4.0",
     "cross-env": "^10.0.0",
     "ncp": "^2.0.0",
+    "playwright-core": "^1.64.1",
+    "prettier": "^3.9.6",
     "rimraf": "^6.0.1",
-    "typescript": "^7.0.2",
-    "prettier": "^3.9.6"
+    "typescript": "^7.0.2"
   }
 }
