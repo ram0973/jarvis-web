@@ -134,6 +134,13 @@ Cron-пример (03:30, хранить 14 дней) — подставь им�
 
 Уноси бэкапы с сервера (rsync/rclone в S3-совместимое хранилище), иначе потеря VPS = потеря бэкапов.
 
+## Альтернатива без панели: Kamal
+
+Если хочется деплой одной командой (`kamal deploy` / пуш в `main`), а на сервере — только `kamal-proxy` (~10 МБ)
+вместо Caddy, в репозитории есть готовая схема: [`config/deploy.yml`](../config/deploy.yml),
+[`docs/kamal.md`](./kamal.md), workflow [`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml).
+Обе схемы одновременно на одном VPS не поднять — они делят порты 80/443.
+
 ## Coolify: когда стоит вместо этой схемы
 
 [Coolify](https://coolify.io) — self-hosted PaaS: веб-UI, git-деплой по пушу, авто-TLS, базы в один клик, логи,

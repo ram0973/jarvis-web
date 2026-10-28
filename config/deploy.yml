@@ -1,0 +1,85 @@
+# Kamal 2 configuration: the server runs only kamal-proxy (~10 MB) plus this app's container; there is no panel.
+# Kamal is installed on the deploying machine (or in CI — see .github/workflows/deploy.yml), not on the server.
+#
+# Two values are required because they differ per server and must not be committed:
+#   KAMAL_HOST    — the server's IPv4/hostname
+#   KAMAL_DOMAIN  — the public hostname, e.g. wiki.example.com
+# Locally: `KAMAL_HOST=203.0.113.10 KAMAL_DOMAIN=wiki.example.com kamal deploy`
+# In CI: exported from repository secrets.
+#
+# Secrets live in `.kamal/secrets` (gitignored). Copy the example and fill it in:
+#   cp .kamal/secrets.example .kamal/secrets
+
+service: jarvis-web
+image: ram0973/jarvis-web
+# Migrations run in the entrypoint, so the first boot after a schema change takes longer than a plain restart.
+deploy_timeout: 120
+
+servers:
+  web:
+    hosts:
+      - <%= ENV.fetch("KAMAL_HOST") %>
+
+proxy:
+  ssl: true
+  host: <%= ENV.fetch("KAMAL_DOMAIN") %>
+  app_port: 3000
+  # `/health` touches Postgres, so a broken database blocks the deploy instead of taking traffic.
+  healthcheck:
+    path: /health
+    interval: 5
+    timeout: 15
+
+registry:
+  server: ghcr.io
+  username: ram0973
+  password:
+    - KAMAL_REGISTRY_PASSWORD
+
+builder:
+  arch: amd64
+  cache:
+    type: registry
+
+env:
+  clear:
+    NODE_ENV: production
+    SERVER_PORT: 3000
+    UPLOADS_DIR: /data/uploads
+    SERVER_URL: https://<%= ENV.fetch("KAMAL_DOMAIN") %>
+    CLIENT_URL: https://<%= ENV.fetch("KAMAL_DOMAIN") %>
+    POSTGRES_USER: jarvis
+    POSTGRES_DB: jarvis
+  secret:
+    - DATABASE_URL
+    - POSTGRES_PASSWORD
+    - BETTER_AUTH_SECRET
+    - OPENAPI_CREDENTIALS
+    - ADMIN_CREDENTIALS
+
+# The database lives on the same box as an accessory. Kamal names the container `jarvis-web-db`, which is exactly the
+# host `DATABASE_URL` points at: `postgresql://jarvis:<password>@jarvis-web-db:5432/jarvis`.
+accessories:
+  db:
+    image: postgres:17-alpine
+    host: <%= ENV.fetch("KAMAL_HOST") %>
+    # Loopback only: without the 127.0.0.1 prefix the port is published straight to the internet, bypassing ufw.
+    port: '127.0.0.1:5432:5432'
+    env:
+      clear:
+        POSTGRES_USER: jarvis
+        POSTGRES_DB: jarvis
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - /srv/jarvis-web/postgres:/var/lib/postgresql/data
+
+# Uploaded images must outlive a deploy; containers are thrown away and rebuilt on every release.
+volumes:
+  - /srv/jarvis-web/uploads:/data/uploads
+
+aliases:
+  shell: app exec --interactive --reuse "bash"
+  logs: app logs -f
+  psql: accessory exec db --interactive --reuse "psql -U jarvis jarvis"
+  dbbackup: accessory exec db --reuse "pg_dump -U jarvis jarvis"

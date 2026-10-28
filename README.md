@@ -103,6 +103,10 @@ Adding another project is a new `deploy/edge/sites/<name>.caddy` plus a unique n
 The full runbook — DNS, firewall, backups, updates, the host-Postgres variant and when to use
 [Coolify](https://coolify.io) instead — is in [docs/deploy.md](./docs/deploy.md).
 
+Prefer `kamal deploy` (push-to-deploy, and a ~10 MB `kamal-proxy` on the server instead of Caddy)? That setup is ready
+too: [`config/deploy.yml`](./config/deploy.yml) + [`docs/kamal.md`](./docs/kamal.md), with a
+[GitHub Actions workflow](./.github/workflows/deploy.yml) that deploys on every push to `main`.
+
 ## For a real app
 
 For a fuller foundation — auth, admin, billing, and more — see [FOR_A_REAL_APP.md](./FOR_A_REAL_APP.md).

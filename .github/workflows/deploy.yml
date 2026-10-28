@@ -1,0 +1,52 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+
+      - name: Install Kamal
+        run: gem install kamal -N --no-document
+
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.KAMAL_SSH_PRIVATE_KEY }}
+
+      # Kamal connects over plain ssh, so a CI runner has no known_hosts entry yet.
+      - name: Trust the server host key
+        run: |
+          mkdir -p ~/.ssh
+          ssh-keyscan -H "${{ secrets.KAMAL_HOST }}" >> ~/.ssh/known_hosts
+
+      # Kamal reads secrets from .kamal/secrets (gitignored); CI writes it from repository secrets.
+      - name: Write .kamal/secrets
+        run: |
+          mkdir -p .kamal
+          cat > .kamal/secrets <<'EOF'
+          KAMAL_REGISTRY_PASSWORD=${{ secrets.KAMAL_REGISTRY_PASSWORD }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          DATABASE_URL=${{ secrets.DATABASE_URL }}
+          BETTER_AUTH_SECRET=${{ secrets.BETTER_AUTH_SECRET }}
+          OPENAPI_CREDENTIALS=${{ secrets.OPENAPI_CREDENTIALS }}
+          ADMIN_CREDENTIALS=${{ secrets.ADMIN_CREDENTIALS }}
+          EOF
+
+      - name: Deploy
+        run: kamal deploy
+        env:
+          KAMAL_HOST: ${{ secrets.KAMAL_HOST }}
+          KAMAL_DOMAIN: ${{ secrets.KAMAL_DOMAIN }}

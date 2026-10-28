@@ -83,6 +83,10 @@
 | `docker-compose.yml`                                  | `db` (Postgres 17) + `app` (образ приложения); тома `jarvis_db`, `jarvis_uploads`                                            |
 | `deploy/`                                             | прод: `docker-compose.prod.yml` (db + app, общая сеть `edge`), `edge/` (Caddy на весь VPS + `sites/*.caddy`), шаблоны `.env` |
 | `docs/deploy.md`                                      | runbook прода: edge + проекты, второй проект, обновления, бэкапы, Coolify, Postgres на хосте                                 |
+| `config/deploy.yml`, `.kamal/`                        | Kamal: деплой по SSH (service, proxy, registry, env, Postgres-accessory), шаблон `.kamal/secrets`                            |
+| `.github/workflows/deploy.yml`                        | деплой по пушу в `main`: Ruby + Kamal в CI, секреты из GitHub                                                                |
+| `docs/kamal.md`                                       | runbook Kamal: setup, deploy/rollback, второй проект, бэкапы, отличия от compose                                             |
+| `src/lib/health.ts`                                   | `GET /health`: `SELECT 1`, 503 при недоступной базе — проверка для kamal-proxy и compose                                     |
 | `src/generated/**`                                    | кодогенерация Point0 и Prisma — **не править руками**                                                                        |
 
 ## Point0 за десять строк
@@ -279,6 +283,8 @@
 - Трогал вики → `GET /wiki/<slug>` отдаёт 200 с отрендеренным markdown (`<h2`, `hljs`, `<table>`), несуществующий
   slug — **404**, анонимный `GET /admin/wiki` — **403**. Загрузка: `curl -F "file=@x.png" …/wiki-image-upload`
   возвращает `/uploads/wiki/<год>/<месяц>/…`, и этот URL открывается как `image/*`.
+- Трогал деплой или `/health` → `curl -s http://localhost:3010/health` отдаёт `{"ok":true}` и **200**; останови
+  Postgres — тот же запрос отдаёт **503** и `{"ok":false,"database":"unreachable"}` (проверено).
 - Менял UI → `bun run dev` и открыл `http://localhost:3001`: страница рендерится, в консоли браузера нет ошибок.
   Быстрее — `bun run check:ui http://localhost:3001/wiki/<slug>`: он печатает видимый текст и падает на любой ошибке
   в консоли (использует установленный Chrome/Edge, браузер не скачивается).
