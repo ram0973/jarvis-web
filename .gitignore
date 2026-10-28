@@ -10,4 +10,5 @@
 src/generated
 node_modules
 dist
+uploads
 *.db

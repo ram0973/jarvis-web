@@ -6,9 +6,10 @@
 ## Что это за проект
 
 `jarvis-web` — fullstack-приложение на **Point0** (Bun + React 19 + TypeScript + Prisma/Postgres + Tailwind v4).
-Сейчас это стартовый шаблон: модель `Idea`, две страницы (`/` и `/about`), демо-песочница на главной, авторизация на
-**better-auth** (вход, регистрация, выход, `/profile`, `HttpOnly`-cookie) и админка `/admin` (обзор, пользователи,
-роли, баны, правка профиля). Postgres 17 и само приложение живут в Docker (`docker-compose.yml`: `db` + `app`).
+Главная страница — **вики**: дерево разделов слева, статьи в markdown с подсветкой кода, оглавлением и картинками;
+статьи редактируются в админке визуальным редактором (MDXEditor), картинки грузятся в `uploads/<app>/<год>/<месяц>`
+и отдаются универсальным маршрутом `/uploads/*`. Авторизация — **better-auth** (вход, регистрация, выход, `/profile`,
+`HttpOnly`-cookie), админка `/admin` (пользователи, роли, баны), Postgres 17 и приложение живут в Docker.
 Репозиторий — https://github.com/ram0973/jarvis-web (ветка `main`). Дальше по плану — сброс пароля и подтверждение
 почты.
 
@@ -50,7 +51,7 @@
 | `src/index.client.tsx` → `src/app.client.tsx`         | клиентский вход: провайдеры (react-query, unhead), роутер, `mount()`                                   |
 | `src/lib/root.tsx`                                    | корневая точка: transformer, класс ошибок, prefetch, loading/error UI, middleware, OpenAPI             |
 | `src/layouts/general.tsx`                             | общий layout: шапка, навигация, контейнер                                                              |
-| `src/pages/home.tsx`                                  | страница `/` + query `ideaList` + mutation `ideaCreate`                                                |
+| `src/pages/home.tsx`                                  | главная вики `/`: карточки разделов дерева                                                             |
 | `src/pages/about.mdx`                                 | страница `/about` в MDX                                                                                |
 | `src/lib/navigation.ts`                               | типизированные `Link` / `NavLink` / `navigate` над сгенерированными роутами                            |
 | `src/lib/prisma.ts`                                   | Prisma-клиент через `PrismaPg` (Postgres) — только сервер                                              |
@@ -63,6 +64,14 @@
 | `src/pages/profile.tsx`                               | пример страницы под гейтом `redirectUnauthorizedPlugin`                                                |
 | `src/pages/admin/layout.tsx`, `home.tsx`, `users.tsx` | каркас админки (префикс `/admin` + гейт), обзор, управление пользователями                             |
 | `src/lib/admin/users.ts`                              | админские query/mutation: список, роли, бан (каждый под `adminOnlyPlugin`)                             |
+| `src/layouts/wiki.tsx`                                | каркас вики: залипающее дерево слева + статья справа                                                   |
+| `src/lib/wiki/tree.ts`                                | чистые хелперы: `buildTree`, `flattenTree`, `pathTo`, `slugify` (транслит кириллицы)                   |
+| `src/lib/wiki/api.ts`                                 | `wikiTreeQuery`, админский список/страница, CRUD-мутации; Prisma — только внутри loader'ов             |
+| `src/lib/wiki/upload.ts`                              | мутация загрузки картинки + action `GET /uploads/*`                                                    |
+| `src/lib/wiki/storage.ts`                             | серверное хранение файлов (`server-only`): `<UPLOADS_DIR>/<app>/<год>/<месяц>/`                        |
+| `src/pages/wiki/page.tsx`                             | статья `/wiki/:slug`: хлебные крошки, TOC, markdown                                                    |
+| `src/pages/admin/wiki/`                               | список страниц, создание, редактор (`/admin/wiki`, `/admin/wiki/new`, `/admin/wiki/:id`)               |
+| `src/ui/wiki/`                                        | `sidebar`, `markdown`, `toc`, `editor` (MDXEditor)                                                     |
 | `src/ui/form.tsx`                                     | `TextField` / `FormError` / `SubmitButton` — общие примитивы форм                                      |
 | `src/lib/env/`                                        | zod-схемы env и ленивая валидация                                                                      |
 | `src/lib/error.ts`                                    | `AppError` (Error0 + плагины status/code/meta/redirect)                                                |
@@ -70,7 +79,7 @@
 | `src/styles/index.css`                                | Tailwind v4 + typography                                                                               |
 | `src/ui/`                                             | переиспользуемые компоненты (сейчас `ErrorBoundary`)                                                   |
 | `prisma/schema.prisma`, `prisma/migrations/`          | схема и миграции Postgres                                                                              |
-| `docker-compose.yml`                                  | `db` (Postgres 17) + `app` (образ приложения), том `jarvis_db`                                         |
+| `docker-compose.yml`                                  | `db` (Postgres 17) + `app` (образ приложения); тома `jarvis_db`, `jarvis_uploads`                      |
 | `src/generated/**`                                    | кодогенерация Point0 и Prisma — **не править руками**                                                  |
 
 ## Point0 за десять строк
@@ -142,6 +151,37 @@
 - **Коды ошибок = HTTP-статусы.** `AppError` собран на `codeStatusPlugin` (`src/lib/error.ts`): `UNAUTHORIZED` → 401,
   `FORBIDDEN` → 403, `CONFLICT` → 409. Новый код добавляй в карту там же, иначе он станет 500.
 - Статусы видно и снаружи: аноним на `/admin` получает **403**, а не пустую страницу; чужая мутация — тоже 403.
+
+## Вики
+
+- Модель `WikiPage` (`prisma/schema.prisma`): `slug` (публичный URL `/wiki/<slug>`, уникальный), `title`, `content`
+  (markdown), `parentId` (дерево), `position` (порядок соседей). Удалить страницу с детьми нельзя: внешний ключ
+  объявлен с `Restrict`, БД вернёт `P2003`, а мутация превратит его в `CONFLICT` → 409.
+- Публичная часть: `/` — главная вики (карточки разделов), `/wiki/:slug` — статья. Каркас — `src/layouts/wiki.tsx`:
+  залипающее дерево слева (`src/ui/wiki/sidebar.tsx`) и статья справа с хлебными крошками и TOC.
+- Дерево строится из плоского списка (`buildTree`), ветка с открытой статьёй раскрывается сама; порядок соседей —
+  `position`, затем заголовок. Slug генерируется транслитом (`slugify`), но его можно править руками — это URL.
+- **Статья грузится своим `.loader`, а не `.with(query)`**: только так SSR реально ждёт данные, иначе страница
+  отдаёт «Please wait» и догружается на клиенте. Оглавление считается на сервере тем же `github-slugger`, чьи id
+  ставит `rehype-slug`.
+- Markdown: `react-markdown` + `remark-gfm` + `rehype-slug` + `rehype-highlight`; raw HTML намеренно выключен.
+  Подсветка кода — тема `github-dark` из `highlight.js`, подключена в `src/styles/index.css`.
+- **Редактор** — `@mdxeditor/editor`: WYSIWYG с переключением в markdown-исходник и вставкой картинки из тулбара.
+  Он браузерный, поэтому страницы `/admin/wiki/new` и `/admin/wiki/:id` помечены `.clientOnly()` — импорт редактора
+  вырезается из серверного бандла. Не возвращай `lazy(() => import(...))`: с ним ломался `point0 build`
+  («Multiple files share the same output path ./index.server.js»).
+- **Загрузка картинок — универсальная.** Мутация `wikiImageUploadMutation` (`z.file()`) вызывает
+  `saveUpload(app, file)`, а тот кладёт файл в `<UPLOADS_DIR>/<app>/<YYYY>/<MM>/<uuid>.<ext>` и возвращает
+  `/uploads/<app>/...`. Сейчас `app` = `wiki`; новому разделу достаточно вызвать `saveUpload('blog', file)`.
+- **Отдача файлов** — action `GET /uploads/*` (`src/lib/wiki/upload.ts` → `serveUpload`): проверяет, что путь остался
+  внутри `UPLOADS_DIR` (иначе 404), отдаёт `content-type` и `immutable`-кэш. Рантайм-файлы нельзя держать в
+  `public/` — сборка копирует его один раз, и загруженное после сборки просто не попадёт в раздачу.
+- Ограничения загрузки: только растр (png/jpeg/webp/gif/avif; SVG отклоняется — это same-origin XSS), до 10 МБ.
+- В Docker `UPLOADS_DIR=/data/uploads` и том `jarvis_uploads`, иначе картинки исчезнут при пересборке образа.
+- **Главная ловушка сборки:** серверный код должен жить внутри тел loader'ов. Модульный хелпер, который трогает
+  `prisma` или `node:fs`, из клиента не вырезается и тянет `pg` в браузер — build падает на
+  «Browser build cannot require() Node.js builtin: dns/tls». Поэтому хранилище — отдельный `server-only` модуль
+  `src/lib/wiki/storage.ts`, который подтягивается динамическим `import()` внутри loader'а и action'а.
 
 ## База данных (Postgres в Docker)
 
@@ -220,6 +260,9 @@
   не должен ничего находить.
 - Трогал админку → анонимный `GET /admin` отдаёт **403**, админ видит список на `/admin/users`, а роль и бан
   сохраняются (повторный запрос списка показывает новое состояние; бан вдобавок убивает сессии пользователя).
+- Трогал вики → `GET /wiki/<slug>` отдаёт 200 с отрендеренным markdown (`<h2`, `hljs`, `<table>`), несуществующий
+  slug — **404**, анонимный `GET /admin/wiki` — **403**. Загрузка: `curl -F "file=@x.png" …/wiki-image-upload`
+  возвращает `/uploads/wiki/<год>/<месяц>/…`, и этот URL открывается как `image/*`.
 - Менял UI → `bun run dev` и открыл `http://localhost:3001`: страница рендерится, в консоли браузера нет ошибок.
 - Не заявляй об успехе, если не запускал проверку.
 
@@ -244,8 +287,8 @@
 
 - **Имя приложения рассогласовано:** `package.json` → `my-app`, `<title>` в `src/index.html` → `IdeaNick`,
   head в `src/lib/root.tsx` → «My App».
-- **Главная страница — демо**: модель `Idea`, `ideaListQuery`, `ideaCreateMutation` и `src/lib/seed.ts` — заглушка
-  под замену.
+- **Вики пока без поиска, истории версий и редиректа при смене slug**: переименовали slug — старая ссылка даёт 404.
+  Картинки вставляются без подписей (`figure`/`figcaption`), а `about.mdx` остался от стартера.
 - **Авторизация недоделана (по плану):** нет сброса пароля и подтверждения почты (`emailVerified` всегда `false` —
   нет почтового сервиса), в админке нет удаления пользователя и просмотра его сессий.
 - **Нет тестов и линтера** (eslint не установлен, хотя в `src/index.client.tsx` остался `eslint-disable`-комментарий).

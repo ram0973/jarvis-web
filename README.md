@@ -1,14 +1,14 @@
 # jarvis-web
 
-A fullstack app built with Point0 — SSR, Prisma + Postgres, Tailwind, type-safe routing, all in TypeScript.
-Batteries included so far: better-auth (email + password, `HttpOnly` session cookie) and an admin panel at `/admin`.
+Personal wiki built on Point0 — SSR, Markdown articles, Postgres, type-safe routing, all in TypeScript.
+Sign-in and registration come from better-auth (`HttpOnly` session cookie); the admin panel covers users and articles.
 
 ## Run
 
 ```bash
 bun install
 docker compose up -d db   # Postgres 17 on localhost:5432 (user/password/db: jarvis)
-bun run setup             # apply migrations, generate Prisma + point0 code, seed demo data
+bun run setup             # apply migrations, generate Prisma + point0 code, seed demo pages
 bun run dev               # server :3000, client :3001 — open http://localhost:3001
 ```
 
@@ -21,16 +21,36 @@ Run `bun run setup` again after a fresh clone, or whenever you reset the databas
 The first admin comes from `ADMIN_CREDENTIALS` in `.env` and is created on startup, so there is a way in
 before anyone signs up.
 
+## Wiki
+
+- `/` — wiki home: the section tree on the left, cards for top-level sections.
+- `/wiki/<slug>` — an article: breadcrumbs, "On this page", Markdown with syntax highlighting and images.
+- Articles form a tree (`parent` + `position`); a page with children cannot be deleted until they are moved.
+
+Editing lives in the admin panel:
+
+- `/admin/wiki` — page list, indented by tree, with edit/view/delete;
+- `/admin/wiki/new` and `/admin/wiki/:id` — the editor. It is [MDXEditor](https://mdxeditor.dev): WYSIWYG with a
+  Markdown-source toggle, toolbar, tables, code blocks, and an image button that uploads straight into the post.
+
+The article bodies are Markdown, rendered with `react-markdown` + GFM, heading anchors and `highlight.js`.
+
+## Images
+
+A single generic upload API: a `File` input on a point0 mutation, stored by `saveUpload(app, file)` under
+
+```
+<UPLOADS_DIR>/<app>/<year>/<month>/<uuid>.<ext>     # UPLOADS_DIR defaults to ./uploads
+```
+
+and served by `GET /uploads/*` with a long immutable cache. Today the app is `wiki`; a future section just calls
+`saveUpload('blog', file)`. Only raster images (png/jpeg/webp/gif/avif) up to 10 MB are accepted — SVG is rejected
+because it is same-origin active content.
+
 ## Admin
 
 `/admin` — overview with counters; `/admin/users` — search, edit name/email, change roles, ban/unban
 (a ban also revokes the user's sessions). Everything under `/admin` is gated by `role: 'admin'`.
-
-## Events, for the record
-
-- `/` — the `Idea` playground: a Prisma model, a query that lists rows, a mutation that adds one.
-- `/about` — an MDX page.
-- `/sign-in`, `/sign-up`, `/profile` — auth pages; `/profile` is the example of a gated page.
 
 ## Production build
 
@@ -49,7 +69,8 @@ docker compose down            # stop (add -v to wipe the database volume)
 
 The image is multi-stage — `bun install` + `prisma generate` + `point0 build`, then a runtime image with production
 dependencies and `dist/`. Its entrypoint applies `prisma migrate deploy` before starting the server, so a fresh
-database is migrated on first boot.
+database is migrated on first boot. Uploaded images live on the `jarvis_uploads` volume, so rebuilding the image
+does not lose them.
 
 To run the container next to a local `bun run dev` (which already owns :3000), give it another host port:
 

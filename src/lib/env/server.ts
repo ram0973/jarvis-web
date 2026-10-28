@@ -30,4 +30,6 @@ export const serverEnv = createEnv('server', {
   BETTER_AUTH_SECRET: z.string().min(32),
   // `email:password` of the first admin, created or promoted on startup — see `lib/auth/init.ts`.
   ADMIN_CREDENTIALS: z.string().optional(),
+  // Where uploaded files live. Relative paths resolve against the process cwd; the container sets `/data/uploads`.
+  UPLOADS_DIR: z.string().optional(),
 })

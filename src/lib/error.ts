@@ -13,7 +13,7 @@ export const AppError = Error0.mark('AppError')
   // 'public'` keeps the code on the wire — a client has to be able to tell `UNAUTHORIZED` from a random 403.
   .use(
     codeStatusPlugin({
-      codes: { UNAUTHORIZED: 401, FORBIDDEN: 403, CONFLICT: 409 },
+      codes: { UNAUTHORIZED: 401, FORBIDDEN: 403, NOT_FOUND: 404, CONFLICT: 409, BAD_REQUEST: 400 },
       transport: 'public',
     }),
   )

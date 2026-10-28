@@ -8,10 +8,23 @@ datasource db {
   provider = "postgresql"
 }
 
-model Idea {
-  id        Int      @id @default(autoincrement())
+// A wiki page is a node of the sidebar tree: `parentId` builds the hierarchy, `position` orders siblings. `slug` is the
+// public URL segment (`/wiki/<slug>`) and stays editable — renaming a page is renaming its URL. Deleting a page that
+// still has children is refused by the database (`Restrict`), so a whole section cannot disappear by one click.
+model WikiPage {
+  id        String     @id @default(uuid())
+  slug      String     @unique
   title     String
-  createdAt DateTime @default(now())
+  content   String     @default("")
+  parentId  String?
+  parent    WikiPage?  @relation("WikiTree", fields: [parentId], references: [id], onDelete: Restrict)
+  children  WikiPage[] @relation("WikiTree")
+  position  Int        @default(0)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@index([parentId])
+  @@map("wiki_page")
 }
 
 // The four models below are better-auth's schema (`user`, `session`, `account`, `verification`). Their field names and

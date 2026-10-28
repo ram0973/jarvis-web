@@ -34,9 +34,14 @@ services:
       # checkout bootable and must not be used anywhere real.
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-secret-do-not-use-in-production}
       ADMIN_CREDENTIALS: ${ADMIN_CREDENTIALS:-admin@jarvis.local:jarvis12345}
+      # Uploaded images live on a volume, not inside the image: a rebuild must not lose the wiki pictures.
+      UPLOADS_DIR: /data/uploads
+    volumes:
+      - jarvis_uploads:/data/uploads
     depends_on:
       db:
         condition: service_healthy
 
 volumes:
   jarvis_db:
+  jarvis_uploads:

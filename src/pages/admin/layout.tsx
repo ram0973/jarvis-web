@@ -34,6 +34,15 @@ export const adminLayout = generalLayout.lets
               Users
             </NavLink>
           </li>
+          <li>
+            <NavLink
+              exactClassName="bg-slate-900! text-white!"
+              className="rounded-md px-3 py-1.5 text-sm font-medium text-slate-600 hover:bg-slate-100"
+              route="adminWiki"
+            >
+              Wiki
+            </NavLink>
+          </li>
         </ul>
       </nav>
       {children}

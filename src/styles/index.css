@@ -1,3 +1,16 @@
 @import 'tailwindcss';
+@import 'highlight.js/styles/github-dark.css';
 @plugin "@tailwindcss/typography";
 @source "../**/*.{html,ts,tsx,mdx}";
+
+/* Article images: framed like a figure, never wider than the column. */
+.prose img {
+  border-radius: 0.75rem;
+  border: 1px solid var(--color-slate-200);
+}
+
+/* The block gets the dark syntax theme; the `hljs` background is already on `pre`. */
+.prose pre code.hljs {
+  background: transparent;
+  padding: 0;
+}
