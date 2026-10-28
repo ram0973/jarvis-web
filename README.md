@@ -25,7 +25,9 @@ before anyone signs up.
 
 - `/` — wiki home: the section tree on the left, cards for top-level sections.
 - `/wiki/<slug>` — an article: breadcrumbs, "On this page", Markdown with syntax highlighting and images.
-- Articles form a tree (`parent` + `position`); a page with children cannot be deleted until they are moved.
+- **Sections are pages with children** — there is no separate category entity. A page with subpages shows
+  "Раздел · N" and lists them under its own text; a leaf is an article. So `Windows → Server → Установка` is just
+  three pages, one inside another.
 
 Editing lives in the admin panel:
 

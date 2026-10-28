@@ -38,6 +38,15 @@ export default wikiLayout
     // `pathTo` walks the flat list the sidebar also uses, so the breadcrumb and the tree never disagree.
     const breadcrumbs = pathTo(pages, { slug: page.slug }).slice(0, -1)
 
+    // A page with children *is* the category: no separate entity, no join table. The list below is what makes it feel
+    // like one, instead of an empty article that happens to have subpages.
+    const children = pages
+      .filter((candidate) => candidate.parentId === page.id)
+      .map((child) => ({
+        ...child,
+        childCount: pages.filter((candidate) => candidate.parentId === child.id).length,
+      }))
+
     return {
       page: {
         id: page.id,
@@ -47,11 +56,12 @@ export default wikiLayout
         updatedAt: page.updatedAt,
       },
       breadcrumbs,
+      children,
       toc: tableOfContents(page.content),
     }
   })
   .head(({ data }) => data.page.title)
-  .page(({ data: { page, breadcrumbs, toc } }) => {
+  .page(({ data: { page, breadcrumbs, children, toc } }) => {
     const me = getMeQuery.useQuery().data?.me
 
     return (
@@ -73,6 +83,8 @@ export default wikiLayout
         <header className="space-y-3 border-b border-slate-200 pb-6">
           <h1 className="text-4xl font-bold tracking-tight text-slate-900">{page.title}</h1>
           <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+            {children.length > 0 ? <span>Раздел · {children.length} внутри</span> : <span>Статья</span>}
+            <span className="text-slate-300">·</span>
             <span>Обновлено {new Date(page.updatedAt).toLocaleDateString('ru-RU')}</span>
             {me?.admin ? (
               <>
@@ -90,7 +102,29 @@ export default wikiLayout
         </header>
 
         <WikiToc items={toc} />
-        <WikiMarkdown content={page.content} />
+        {page.content.trim().length > 0 ? <WikiMarkdown content={page.content} /> : null}
+
+        {children.length > 0 ? (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold text-slate-900">В этом разделе</h2>
+            <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 bg-white shadow-sm">
+              {children.map((child) => (
+                <li key={child.id}>
+                  <Link
+                    route="wikiPage"
+                    input={{ slug: child.slug }}
+                    className="flex items-center justify-between gap-4 px-4 py-3 hover:bg-slate-50"
+                  >
+                    <span className="font-medium text-slate-900">{child.title}</span>
+                    <span className="shrink-0 text-xs text-slate-400">
+                      {child.childCount > 0 ? `раздел · ${child.childCount}` : 'статья'}
+                    </span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
       </article>
     )
   })

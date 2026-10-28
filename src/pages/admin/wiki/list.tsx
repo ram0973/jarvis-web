@@ -16,6 +16,13 @@ export default adminLayout
     const [error, setError] = useState<string | null>(null)
 
     const rows = list.data ? flattenTree(buildTree(list.data.pages)) : []
+    // A page with children is a section (category); a leaf is an article. Same rows, different label.
+    const childCounts = new Map<string, number>()
+    for (const page of list.data?.pages ?? []) {
+      if (page.parentId) {
+        childCounts.set(page.parentId, (childCounts.get(page.parentId) ?? 0) + 1)
+      }
+    }
 
     const destroy = async (id: string) => {
       if (!window.confirm('Delete this page? Child pages must be removed first.')) {
@@ -61,6 +68,7 @@ export default adminLayout
             <thead className="border-b border-slate-200 text-xs uppercase tracking-wide text-slate-500">
               <tr>
                 <th className="px-4 py-3 font-medium">Title</th>
+                <th className="px-4 py-3 font-medium">Kind</th>
                 <th className="px-4 py-3 font-medium">Slug</th>
                 <th className="px-4 py-3 font-medium">Updated</th>
                 <th className="px-4 py-3 text-right font-medium">Actions</th>
@@ -69,19 +77,19 @@ export default adminLayout
             <tbody className="divide-y divide-slate-100">
               {list.isLoading ? (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={4}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={5}>
                     Loading…
                   </td>
                 </tr>
               ) : list.error ? (
                 <tr>
-                  <td className="px-4 py-6 text-red-600" colSpan={4}>
+                  <td className="px-4 py-6 text-red-600" colSpan={5}>
                     {list.error.message}
                   </td>
                 </tr>
               ) : rows.length === 0 ? (
                 <tr>
-                  <td className="px-4 py-6 text-slate-500" colSpan={4}>
+                  <td className="px-4 py-6 text-slate-500" colSpan={5}>
                     Nothing here yet.
                   </td>
                 </tr>
@@ -93,6 +101,17 @@ export default adminLayout
                         {depth > 0 ? '— ' : ''}
                         {node.title}
                       </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      {childCounts.get(node.id) ? (
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                          раздел · {childCounts.get(node.id)}
+                        </span>
+                      ) : (
+                        <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-700">
+                          статья
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 font-mono text-xs text-slate-500">/wiki/{node.slug}</td>
                     <td className="px-4 py-3 text-slate-500">{new Date(node.updatedAt).toLocaleDateString('ru-RU')}</td>
