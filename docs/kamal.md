@@ -58,6 +58,39 @@ curl -fsS https://wiki.example.com/health    # {"ok":true}
 
 Если база не поднялась: `kamal accessory boot db`, логи — `kamal accessory logs db -f`.
 
+## Миграции
+
+Образ приложения не содержит Prisma CLI: в нём нет `node_modules` (только пустая папка под кэш Point0). Миграции едут в
+отдельном образе `ghcr.io/ram0973/jarvis-web:migrate`, и их прогоняет **pre-deploy hook** — скрипт
+[`.kamal/hooks/pre-deploy`](../.kamal/hooks/pre-deploy), который Kamal запускает на машине, где вызван `kamal deploy`.
+
+```
+kamal deploy
+  └─ pre-deploy hook (локально, с .kamal/secrets в окружении)
+       └─ ssh на сервер: docker pull :migrate && docker run --rm --network kamal -e DATABASE_URL … :migrate
+  └─ kamal-proxy переключает трафик только если hook завершился успешно
+```
+
+Почему так: контейнер миграций живёт на сети `kamal`, то есть видит базу по имени `jarvis-web-db`, а упавшая миграция
+**отменяет деплой** — старый контейнер продолжает работать.
+
+Что нужно:
+
+1. Образ миграций должен быть в registry: в CI это делает шаг «Build and push the migration image» перед `kamal deploy`.
+   Локально — `docker build --target migrate -t ghcr.io/ram0973/jarvis-web:migrate . && docker push …`.
+2. `DATABASE_URL` должен быть в `.kamal/secrets` (он там уже есть) — без него hook падает с понятной ошибкой.
+
+Проверить миграции вручную, не деплоя:
+
+```bash
+docker build --target migrate -t ghcr.io/ram0973/jarvis-web:migrate . && docker push ghcr.io/ram0973/jarvis-web:migrate
+kamal deploy --skip-push   # или просто дождаться, пока hook отработает в обычном деплое
+```
+
+`kamal rollback` возвращает **код**, но не схему: если миграция была несовместимой (удалили колонку), старый контейнер
+на новой схеме может сломаться. Откат схемы — это `prisma migrate resolve`/ручной SQL, и его стоит продумывать заранее
+для каждой миграции, которая удаляет или переименовывает.
+
 ## Каждый день
 
 | Задача             | Команда                                              |

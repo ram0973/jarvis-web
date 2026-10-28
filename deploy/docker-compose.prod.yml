@@ -22,6 +22,25 @@ services:
         max-size: '10m'
         max-file: '3'
 
+  # Applies `prisma migrate deploy` once, before the app starts. The runtime image has no Prisma CLI, so the app itself
+  # never migrates; compose waits for this container to exit 0 (`service_completed_successfully`).
+  migrate:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+      target: migrate
+    image: ghcr.io/ram0973/jarvis-web:${IMAGE_TAG:-latest}-migrate
+    env_file: .env
+    restart: 'no'
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: '10m'
+        max-file: '3'
+
   app:
     # `build` is for building here (or in CI); `image` lets the server skip building entirely:
     #   local/CI: docker compose build --push app     server: docker compose pull && up -d --no-build
@@ -29,6 +48,7 @@ services:
     build:
       context: ..
       dockerfile: Dockerfile
+      target: runner
     restart: unless-stopped
     env_file: .env
     environment:
@@ -40,6 +60,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       default: {}
       edge:

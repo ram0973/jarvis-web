@@ -16,8 +16,22 @@ services:
       timeout: 3s
       retries: 10
 
+  # Applies the migrations once, before the app starts; the app image carries no Prisma CLI.
+  migrate:
+    build:
+      context: .
+      target: migrate
+    restart: 'no'
+    environment:
+      DATABASE_URL: postgresql://jarvis:jarvis@db:5432/jarvis
+    depends_on:
+      db:
+        condition: service_healthy
+
   app:
-    build: .
+    build:
+      context: .
+      target: runner
     restart: unless-stopped
     ports:
       # Host port is configurable so the container can run next to a local `bun run dev` on :3000.
@@ -41,6 +55,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
 
 volumes:
   jarvis_db:

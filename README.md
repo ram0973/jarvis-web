@@ -69,10 +69,10 @@ docker compose logs -f app     # watch the app
 docker compose down            # stop (add -v to wipe the database volume)
 ```
 
-The image is multi-stage — `bun install` + `prisma generate` + `point0 build`, then a runtime image with production
-dependencies and `dist/`. Its entrypoint applies `prisma migrate deploy` before starting the server, so a fresh
-database is migrated on first boot. Uploaded images live on the `jarvis_uploads` volume, so rebuilding the image
-does not lose them.
+The image is multi-stage — `bun install` + `prisma generate` + `point0 build`, then a runtime image that carries only
+`dist/`: no `node_modules`, no Prisma CLI, ~310 MB. Migrations travel in a separate one-shot image (~600 MB,
+`docker build --target migrate`), and the `migrate` service applies them before `app` starts. Uploaded images live on
+the `jarvis_uploads` volume, so rebuilding the image does not lose them.
 
 To run the container next to a local `bun run dev` (which already owns :3000), give it another host port:
 

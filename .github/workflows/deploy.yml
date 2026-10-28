@@ -45,6 +45,16 @@ jobs:
           ADMIN_CREDENTIALS=${{ secrets.ADMIN_CREDENTIALS }}
           EOF
 
+      - name: Log in to the registry
+        run: echo "${{ secrets.KAMAL_REGISTRY_PASSWORD }}" | docker login ghcr.io -u ram0973 --password-stdin
+
+      # The app image carries no Prisma CLI; migrations travel in their own image, and the pre-deploy hook pulls this
+      # tag on the server before Kamal swaps containers.
+      - name: Build and push the migration image
+        run: |
+          docker build --target migrate -t ghcr.io/ram0973/jarvis-web:migrate .
+          docker push ghcr.io/ram0973/jarvis-web:migrate
+
       - name: Deploy
         run: kamal deploy
         env:

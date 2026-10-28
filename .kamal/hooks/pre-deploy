@@ -1,0 +1,20 @@
+#!/bin/sh
+# Applies Prisma migrations to the production database before Kamal swaps in the new container.
+#
+# Kamal runs hooks on the machine that invokes `kamal deploy` (your laptop or CI) and exports `.kamal/secrets` into the
+# environment, so DATABASE_URL is available here. The migration itself runs on the server, in its own image, on Kamal's
+# `kamal` network — the same one the database accessory (`jarvis-web-db`) lives on.
+#
+# A non-zero exit aborts the deploy, so a broken migration never replaces a working container.
+set -eu
+
+host=${KAMAL_HOSTS%%,*}
+image=${KAMAL_MIGRATE_IMAGE:-ghcr.io/ram0973/jarvis-web:migrate}
+
+: "${DATABASE_URL:?the pre-deploy hook needs DATABASE_URL from .kamal/secrets}"
+
+# Base64 keeps the URL intact across the ssh command line: it holds characters (`@`, `:`, `?`, `&`) a remote shell
+# would otherwise interpret.
+encoded=$(printf '%s' "$DATABASE_URL" | base64 | tr -d '\n')
+
+ssh "root@${host}" "docker pull '${image}' >/dev/null && docker run --rm --network kamal -e DATABASE_URL=\$(printf '%s' '${encoded}' | base64 -d) '${image}'"

@@ -105,12 +105,49 @@ git pull
 docker compose -f deploy/docker-compose.prod.yml up -d --build
 ```
 
-Миграции применяются на старте контейнера. Откат — `git checkout <коммит/тег>` и та же команда.
+Миграции применяет отдельный одноразовый контейнер `migrate` (см. ниже), а не приложение: `app` стартует только после
+того, как `migrate` завершится с кодом 0. Откат — `git checkout <коммит/тег>` и та же команда.
+
+## Миграции
+
+Образ приложения **не содержит Prisma CLI** — в нём вообще нет `node_modules` (только пустая папка, которую движок
+Point0 использует под кэш). Миграции едут в отдельном образе, который собирается из той же ветки:
+
+| Образ                                      | Что внутри                | Размер      |
+| ------------------------------------------ | ------------------------- | ----------- |
+| `ghcr.io/ram0973/jarvis-web:<тег>`         | `dist/` (клиент + сервер) | **~310 МБ** |
+| `ghcr.io/ram0973/jarvis-web:<тег>-migrate` | Prisma CLI + `prisma/`    | **~600 МБ** |
+
+Как это работает в compose:
+
+```bash
+docker compose -f deploy/docker-compose.prod.yml up -d --build   # соберёт и app, и migrate
+docker compose -f deploy/docker-compose.prod.yml logs migrate    # «All migrations have been successfully applied»
+docker compose -f deploy/docker-compose.prod.yml ps              # migrate — Exited (0), app — Up
+```
+
+Порядок держит `depends_on`:
+
+```yaml
+app:
+  depends_on:
+    db: { condition: service_healthy }
+    migrate: { condition: service_completed_successfully }
+```
+
+Так что «приложение поднялось раньше схемы» невозможно. Если миграция падает — контейнер `migrate` выходит с ненулевым
+кодом, и `app` со старым кодом продолжает работать (compose не трогает уже запущенный контейнер, пока не пересоздаст).
+
+Запустить миграции вручную (например, чтобы применить новую миграцию без пересборки приложения):
+
+```bash
+docker compose -f deploy/docker-compose.prod.yml run --rm migrate
+```
 
 ## Сборка образов отдельно от сервера
 
 Серверу не обязательно собирать приложение: образ можно собрать у себя или в CI, запушить в registry, а на сервер
-только тянуть. В [`docker-compose.prod.yml`](../deploy/docker-compose.prod.yml) у `app` теперь есть `image:`
+только тянуть. В [`docker-compose.prod.yml`](../deploy/docker-compose.prod.yml) у `app` и `migrate` есть `image:`
 рядом с `build:` — работает и так, и так.
 
 Локально (Docker Desktop на Windows/Mac):
@@ -118,24 +155,24 @@ docker compose -f deploy/docker-compose.prod.yml up -d --build
 ```bash
 docker login ghcr.io
 export IMAGE_TAG=2026-10-28          # дата или sha коммита, не «latest»
-DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose -f deploy/docker-compose.prod.yml build app
-docker compose -f deploy/docker-compose.prod.yml push app
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose -f deploy/docker-compose.prod.yml build app migrate
+docker compose -f deploy/docker-compose.prod.yml push app migrate
 ```
 
 На сервере — без сборки:
 
 ```bash
 export IMAGE_TAG=2026-10-28
-docker compose -f deploy/docker-compose.prod.yml pull app
+docker compose -f deploy/docker-compose.prod.yml pull app migrate
 docker compose -f deploy/docker-compose.prod.yml up -d --no-build
 ```
 
 Почему `IMAGE_TAG`, а не `latest`: откат становится `IMAGE_TAG=<прошлый>` + `up -d --no-build`, без пересборки и без
-`git checkout`. Миграции при этом всё равно выполняются в entrypoint контейнера — они лежат в образе.
+`git checkout`. Тег миграций — `<IMAGE_TAG>-migrate`, то есть версия образа приложения определяет и миграции.
 
 Про платформу: если сервер amd64, а собираешь на ARM-маке, `DOCKER_DEFAULT_PLATFORM=linux/amd64` обязателен;
-на Windows Docker Desktop контейнеры уже linux/amd64, флаг просто страхует. Первый pull ~860 МБ, дальше тянутся
-только изменённые слои.
+на Windows Docker Desktop контейнеры уже linux/amd64, флаг просто страхует. Первый pull ~310 МБ (приложение) и
+~600 МБ (миграции), дальше тянутся только изменённые слои.
 
 В **Kamal** это поведение по умолчанию: `kamal deploy` собирает образ там, где запущен Kamal (у нас — GitHub
 Actions), пушит в GHCR, а сервер только тянет. Хочешь собирать на сервере — `builder: remote: true` в

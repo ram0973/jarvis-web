@@ -217,10 +217,14 @@
   номер из последовательности Postgres (`#1`, `#2`, …): он объявлен в better-auth `user.additionalFields`
   (`input: false`), иначе `me.user.sn` не появится в сессии. Показываем его в админке и профиле; ключом он не
   становится — снаружи везде uuid.
-- **Приложение в Docker.** `Dockerfile` — две стадии: `build` (bun install → `prisma:generate` → `point0 build`) и
-  `runner` (только production-зависимости + `dist/` + `prisma/`). Entrypoint: `prisma migrate deploy`, затем
-  `dist/server/index.server.js`. Сервис `app` ждёт `db` до `service_healthy`, поэтому миграции всегда идут в
-  готовую базу.
+- **Приложение в Docker.** `Dockerfile` — три стадии: `build` (bun install → `prisma:generate` → `point0 build`),
+  `runner` (**только `dist/`**, без `node_modules` и Prisma CLI, ~310 МБ) и `migrate` (Prisma CLI + `prisma/`,
+  ~600 МБ, одноразовый). `runner` создаёт пустую папку `node_modules` — движку Point0 она нужна как место под
+  `node_modules/.cache/@point0`, пакеты оттуда в рантайме не читаются (проверено: с пустой папкой работают все
+  страницы). Миграции выполняет `migrate`: в compose — сервис с
+  `depends_on: { migrate: service_completed_successfully }`, в Kamal — pre-deploy hook
+  `.kamal/hooks/pre-deploy`, который гоняет образ `:migrate` на сервере. Сервис `app` ждёт `db` до `service_healthy`,
+  поэтому миграции всегда идут в готовую базу.
 - Хост-порт приложения настраивается: `APP_PORT` (по умолчанию 3000) и `APP_URL` (по умолчанию
   `http://localhost:3000`) — чтобы контейнер жил рядом с локальным `bun run dev`:
   `APP_PORT=3100 APP_URL=http://localhost:3100 docker compose up -d --build app`.

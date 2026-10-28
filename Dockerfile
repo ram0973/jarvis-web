@@ -1,5 +1,7 @@
 # syntax=docker/dockerfile:1
-# Two stages: `build` installs everything and produces dist/, `runner` keeps the runtime and production deps only.
+# Three stages: `build` compiles everything, `migrate` is a one-shot image that applies the database migrations before a
+# deploy, and `runner` (the last stage, so a plain `docker build .` gives the app) is the app itself with no
+# dependencies on disk.
 
 FROM oven/bun:1 AS build
 WORKDIR /app
@@ -25,26 +27,41 @@ RUN bun run prisma:generate && bun run build
 # one line, so line-based editing would cut the code), otherwise Bun warns on start that it cannot decode the map.
 RUN find dist -name '*.map' -delete && bun -e "const fs = require('node:fs'); for (const file of new Bun.Glob('dist/**/*.js').scanSync('.')) { const text = fs.readFileSync(file, 'utf8'); const stripped = text.replace(/\/\/# sourceMappingURL=\S+\s*$/, ''); if (stripped !== text) fs.writeFileSync(file, stripped) }"
 
+# Migrations live in their own image: a deploy runs it once, and the app image never needs the Prisma CLI.
+# Only the CLI and `dotenv` are installed — not this app's dependency tree — hence the empty package.json below. The
+# Prisma version is read from the app's package.json so the two cannot drift.
+FROM oven/bun:1-slim AS migrate
+WORKDIR /app
+
+COPY package.json /tmp/app-package.json
+RUN printf '{"name":"migrate","private":true}\n' > package.json \
+    && bun add "prisma@$(bun -e 'console.log(require("/tmp/app-package.json").dependencies.prisma)')" dotenv \
+    && rm -rf /root/.bun/install/cache \
+      node_modules/@electric-sql \
+      node_modules/react \
+      node_modules/react-dom \
+      node_modules/@typescript \
+      node_modules/bun-plugin-tailwind \
+      node_modules/onnxruntime-node \
+      node_modules/onnxruntime-web
+
+COPY prisma ./prisma
+COPY prisma.config.ts ./prisma.config.ts
+
+CMD ["bunx", "prisma", "migrate", "deploy"]
+
+# The runtime image: `dist/` only, no packages at all. The point0 engine does not import anything from node_modules at
+# run time (the server bundle is self-contained); it only needs a directory named `node_modules` to put its cache in,
+# because it resolves `node_modules/.cache/@point0/...` by walking up from the working directory.
 FROM oven/bun:1-slim AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 
-# `prisma migrate deploy` runs from the entrypoint, so the Prisma CLI (a production dependency) and the migrations have
-# to travel with the image. Everything else in `dist/` is already bundled. `bun install` still drags in packages that
-# only the CLI's own tooling (Studio, a local dev database) and the build need — they are removed in the same layer, so
-# they never reach the image, and the app is verified to boot and serve without them. The install cache is dropped here
-# too — it is ~450 MB of tarballs nobody needs at runtime.
-COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production \
-    && rm -rf /root/.bun/install/cache \
-      node_modules/@electric-sql \
-      node_modules/lowlight \
-      node_modules/@typescript \
-      node_modules/@babel
-
-COPY --from=build /app/prisma ./prisma
-COPY --from=build /app/prisma.config.ts ./prisma.config.ts
 COPY --from=build /app/dist ./dist
 
+# An empty directory is all the engine asks for. Creating it in the image keeps the check happy without installing a
+# single package, and the app is verified to boot and serve every page from this image.
+RUN mkdir -p /app/node_modules && chmod 1777 /app/node_modules
+
 EXPOSE 3000
-CMD ["sh", "-c", "bunx prisma migrate deploy && bun run ./dist/server/index.server.js"]
+CMD ["bun", "run", "./dist/server/index.server.js"]
