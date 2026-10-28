@@ -7,12 +7,13 @@ const baseItem = 'block rounded-md px-2 py-1.5 text-sm transition-colors'
 const idleItem = `${baseItem} text-slate-700 hover:bg-slate-100`
 const activeItem = `${baseItem} bg-blue-50 font-medium text-blue-800`
 
-const ancestorsOf = (nodes: WikiTreeNode[], slug: string, trail: string[] = []): string[] => {
+/** Root → … → the page itself: everything that must be open for the active item to be visible. */
+const pathIds = (nodes: WikiTreeNode[], slug: string, trail: string[] = []): string[] => {
   for (const node of nodes) {
     if (node.slug === slug) {
-      return trail
+      return [...trail, node.id]
     }
-    const found = ancestorsOf(node.children, slug, [...trail, node.id])
+    const found = pathIds(node.children, slug, [...trail, node.id])
     if (found.length > 0) {
       return found
     }
@@ -32,20 +33,25 @@ const Chevron = ({ open }: { open: boolean }) => (
 )
 
 /**
- * The wiki tree. Sections expand on click; the branch that leads to the open article opens by itself, so a deep page
- * is never hidden behind a collapsed parent.
+ * The wiki tree, without any frame around it. A section with children opens on a click on its own row (not only on the
+ * chevron): clicking a section both navigates to it and unfolds what is inside. The chevron alone collapses/expands
+ * without navigating, and the branch leading to the open article is unfolded automatically.
  */
 export const WikiSidebar = ({ tree }: { tree: WikiTreeNode[] }) => {
   const location = useLocation()
   const activeSlug = (location.params as { slug?: string } | undefined)?.slug
-  const activeTrail = useMemo(() => (activeSlug ? ancestorsOf(tree, activeSlug) : []), [tree, activeSlug])
-  const [open, setOpen] = useState<Set<string>>(() => new Set(activeTrail))
+  const activePath = useMemo(() => (activeSlug ? pathIds(tree, activeSlug) : []), [tree, activeSlug])
+  const [open, setOpen] = useState<Set<string>>(() => new Set(activePath))
 
   useEffect(() => {
-    if (activeTrail.length > 0) {
-      setOpen((current) => new Set([...current, ...activeTrail]))
+    if (activePath.length > 0) {
+      setOpen((current) => new Set([...current, ...activePath]))
     }
-  }, [activeTrail])
+  }, [activePath])
+
+  const expand = (id: string) => {
+    setOpen((current) => (current.has(id) ? current : new Set([...current, id])))
+  }
 
   const toggle = (id: string) => {
     setOpen((current) => {
@@ -60,7 +66,7 @@ export const WikiSidebar = ({ tree }: { tree: WikiTreeNode[] }) => {
   }
 
   const renderLevel = (nodes: WikiTreeNode[], depth: number) => (
-    <ul className={depth === 0 ? 'space-y-0.5' : 'mt-0.5 space-y-0.5 border-l border-slate-200 pl-2'}>
+    <ul className={depth === 0 ? 'space-y-0.5' : 'mt-0.5 space-y-0.5 pl-3'}>
       {nodes.map((node) => {
         const isActive = node.slug === activeSlug
         const hasChildren = node.children.length > 0
@@ -83,7 +89,16 @@ export const WikiSidebar = ({ tree }: { tree: WikiTreeNode[] }) => {
               ) : (
                 <span className="w-5 shrink-0" />
               )}
-              <Link route="wikiPage" input={{ slug: node.slug }} className={isActive ? activeItem : idleItem}>
+              <Link
+                route="wikiPage"
+                input={{ slug: node.slug }}
+                className={isActive ? activeItem : idleItem}
+                onClick={() => {
+                  if (hasChildren) {
+                    expand(node.id)
+                  }
+                }}
+              >
                 {node.title}
               </Link>
             </div>
@@ -95,10 +110,10 @@ export const WikiSidebar = ({ tree }: { tree: WikiTreeNode[] }) => {
   )
 
   return (
-    <nav aria-label="Wiki navigation" className="rounded-xl border border-slate-200 bg-white/70 p-3 shadow-sm">
+    <nav aria-label="Wiki navigation">
       <Link
         route="home"
-        className="mb-2 block rounded-md px-2 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-100"
+        className="mb-3 block rounded-md px-2 py-1.5 text-sm font-semibold text-slate-900 hover:bg-slate-100"
       >
         Wiki home
       </Link>
