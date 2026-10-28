@@ -144,6 +144,11 @@ app:
 docker compose -f deploy/docker-compose.prod.yml run --rm migrate
 ```
 
+Про зависимости: `prisma` (CLI) лежит в `devDependencies` — это инструмент разработки и миграций, а не рантайма. В
+образы он попадает только в `migrate`, который ставит CLI явно. Если где-то понадобится production-install вручную,
+помни: `bun install --production` всё равно поставит `prisma` как **optional peer** `@prisma/client`, а `--omit peer`
+исключает его (474 МБ → 203 МБ в `node_modules`) — приложению peers не нужны, потому что бандл самодостаточен.
+
 ## Сборка образов отдельно от сервера
 
 Серверу не обязательно собирать приложение: образ можно собрать у себя или в CI, запушить в registry, а на сервер

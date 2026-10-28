@@ -225,6 +225,11 @@
   `depends_on: { migrate: service_completed_successfully }`, в Kamal — pre-deploy hook
   `.kamal/hooks/pre-deploy`, который гоняет образ `:migrate` на сервере. Сервис `app` ждёт `db` до `service_healthy`,
   поэтому миграции всегда идут в готовую базу.
+- **Prisma CLI — devDependency** (`package.json` → `devDependencies.prisma`), в рантайм-образ он не попадает: `runner`
+  вообще не устанавливает пакеты, а `migrate` ставит только CLI (версия читается из `devDependencies.prisma`).
+  Ловушка: `bun install --production` всё равно тянет `prisma` как **optional peer** `@prisma/client` и `better-auth`
+  (474 МБ против 203 МБ с `--omit peer`) — поэтому «убрать CLI из продакшена» решается не секцией в package.json, а
+  тем, что образы не делают production-install.
 - Хост-порт приложения настраивается: `APP_PORT` (по умолчанию 3000) и `APP_URL` (по умолчанию
   `http://localhost:3000`) — чтобы контейнер жил рядом с локальным `bun run dev`:
   `APP_PORT=3100 APP_URL=http://localhost:3100 docker compose up -d --build app`.

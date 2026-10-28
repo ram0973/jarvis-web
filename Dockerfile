@@ -29,13 +29,14 @@ RUN find dist -name '*.map' -delete && bun -e "const fs = require('node:fs'); fo
 
 # Migrations live in their own image: a deploy runs it once, and the app image never needs the Prisma CLI.
 # Only the CLI and `dotenv` are installed — not this app's dependency tree — hence the empty package.json below. The
-# Prisma version is read from the app's package.json so the two cannot drift.
+# Prisma version is read from the app's package.json (`devDependencies`, because the CLI is a development tool) so the
+# two cannot drift.
 FROM oven/bun:1-slim AS migrate
 WORKDIR /app
 
 COPY package.json /tmp/app-package.json
 RUN printf '{"name":"migrate","private":true}\n' > package.json \
-    && bun add "prisma@$(bun -e 'console.log(require("/tmp/app-package.json").dependencies.prisma)')" dotenv \
+    && bun add "prisma@$(bun -e 'console.log(require("/tmp/app-package.json").devDependencies.prisma)')" dotenv \
     && rm -rf /root/.bun/install/cache \
       node_modules/@electric-sql \
       node_modules/react \
