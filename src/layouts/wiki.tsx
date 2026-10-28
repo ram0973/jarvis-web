@@ -11,7 +11,7 @@ import { WikiSidebar } from '@/ui/wiki/sidebar'
 export const wikiLayout = generalLayout.lets.layout().layout(({ children }) => {
   const tree = wikiTreeQuery.useQuery().data?.tree ?? []
   return (
-    <div className="grid gap-6 lg:grid-cols-[17rem_minmax(0,1fr)] lg:gap-8">
+    <div className="grid gap-6 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-8 xl:gap-10">
       <aside className="lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:self-start lg:overflow-y-auto">
         <WikiSidebar tree={tree} />
       </aside>

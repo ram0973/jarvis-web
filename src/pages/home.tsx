@@ -28,7 +28,7 @@ export default wikiLayout
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {tree.map((section) => (
               <Link
                 key={section.id}
