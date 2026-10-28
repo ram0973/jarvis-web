@@ -7,10 +7,43 @@
 .prose img {
   border-radius: 0.75rem;
   border: 1px solid var(--color-slate-200);
+  max-width: 100%;
+  height: auto;
 }
 
 /* The block gets the dark syntax theme; the `hljs` background is already on `pre`. */
 .prose pre code.hljs {
   background: transparent;
   padding: 0;
+}
+
+/*
+ * The image-insert control is the one toolbar button that uploads a file, and as a bare grey icon it disappeared among
+ * its neighbours. Give it a filled primary colour and a visible label.
+ */
+.mdxeditor-toolbar [aria-label='Insert image'] {
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: 0.4rem;
+  height: 2rem;
+  padding-inline: 0.6rem;
+  border-radius: 0.5rem;
+  background-color: #2563eb !important;
+  color: #fff !important;
+}
+
+.mdxeditor-toolbar [aria-label='Insert image']:hover {
+  background-color: #1d4ed8 !important;
+}
+
+.mdxeditor-toolbar [aria-label='Insert image'] svg {
+  color: #fff !important;
+}
+
+.mdxeditor-toolbar [aria-label='Insert image']::after {
+  content: 'Картинка';
+  font-size: 0.8rem;
+  font-weight: 500;
+  line-height: 1;
 }
