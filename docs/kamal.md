@@ -118,18 +118,82 @@ kamal deploy    # proxy уже поднят, конфиг лишь добави�
 
 ## Бэкапы
 
-Тома лежат в `/srv/jarvis-web`:
+У Kamal **нет** встроенных бэкапов: он умеет только деплоить. Зато у него уже есть всё нужное — контейнер базы и
+тома — поэтому бэкап это скрипт [`deploy/backup.sh`](../deploy/backup.sh) на сервере:
 
 ```bash
-# база (контейнер accessory называется <service>-<accessory>)
-docker exec jarvis-web-db pg_dump -U jarvis jarvis | gzip > backup-$(date +%F).sql.gz
-
-# картинки
-tar czf uploads-$(date +%F).tgz -C /srv/jarvis-web/uploads .
+cd /home/deploy/jarvis-web
+deploy/backup.sh                       # Kamal: контейнер jarvis-web-db, картинки из /srv/jarvis-web/uploads
 ```
 
-Это те же команды, что и для compose-схемы, только контейнер называется `jarvis-web-db`, а не `jarvis-web-db-1`.
-Уноси бэкапы с сервера — том защищает от деплоя, но не от потери VPS.
+Что делает: `pg_dump` через `docker exec`, `tar` картинок, удаление файлов старше `KEEP_DAYS` (по умолчанию 14).
+Переменные: `BACKUP_DIR`, `DB_CONTAINER`, `POSTGRES_USER`/`POSTGRES_DB`, `UPLOADS_DIR`, `UPLOADS_VOLUME`, `KEEP_DAYS`.
+
+Для compose вместо каталога картинок — том:
+
+```bash
+UPLOADS_VOLUME=jarvis-web_uploads DB_CONTAINER=jarvis-web-db-1 deploy/backup.sh
+```
+
+### Раз в сутки через systemd
+
+`/etc/systemd/system/jarvis-backup.service`:
+
+```ini
+[Unit]
+Description=Backup jarvis-web (Postgres + uploads)
+
+[Service]
+Type=oneshot
+User=deploy
+WorkingDirectory=/home/deploy/jarvis-web
+Environment=BACKUP_DIR=/var/backups/jarvis-web
+ExecStart=/home/deploy/jarvis-web/deploy/backup.sh
+```
+
+`/etc/systemd/system/jarvis-backup.timer`:
+
+```ini
+[Unit]
+Description=Nightly jarvis-web backup
+
+[Timer]
+OnCalendar=03:30
+Persistent=true
+
+[Install]
+WantedBy=timers.target
+```
+
+```bash
+sudo mkdir -p /var/backups/jarvis-web && sudo chown deploy:deploy /var/backups/jarvis-web
+sudo systemctl daemon-reload && sudo systemctl enable --now jarvis-backup.timer
+systemctl list-timers jarvis-backup.timer
+```
+
+`Persistent=true` догоняет пропущенный запуск, если сервер спал.
+
+### Восстановление
+
+```bash
+# база: снять приложение, чтобы никто не писал, затем залить дамп
+docker exec -i jarvis-web-db psql -U jarvis -d postgres -c 'drop database jarvis' -c 'create database jarvis'
+gzip -dc /var/backups/jarvis-web/db-2026-10-28.sql.gz | docker exec -i jarvis-web-db psql -U jarvis -d jarvis
+docker exec jarvis-web-db psql -U jarvis -d jarvis -c 'select count(*) from wiki_page'
+
+# картинки
+tar xzf /var/backups/jarvis-web/uploads-2026-10-28.tgz -C /srv/jarvis-web/uploads
+```
+
+Проверено на живом Postgres: дамп, снятый скриптом, разворачивается в чистую базу, и число строк совпадает
+(`wiki_page`: 7 → 7).
+
+### Что важно помнить
+
+- **Бэкап на том же диске — не бэкап.** `rsync`/`rclone` в S3-совместимое хранилище или на другую машину.
+- **Проверяй восстановление**, а не только наличие файлов: скрипт раз в месяц → `psql` в `jarvis_restore`-базу.
+- `docker exec ... pg_dump` работает без остановки приложения (согласованный снимок на момент транзакции), но при
+  восстановлении приложение лучше остановить.
 
 ## Чем отличается от compose-схемы
 

@@ -82,6 +82,7 @@
 | `prisma/schema.prisma`, `prisma/migrations/`          | схема и миграции Postgres                                                                                                    |
 | `docker-compose.yml`                                  | `db` (Postgres 17) + `app` (образ приложения); тома `jarvis_db`, `jarvis_uploads`                                            |
 | `deploy/`                                             | прод: `docker-compose.prod.yml` (db + app, общая сеть `edge`), `edge/` (Caddy на весь VPS + `sites/*.caddy`), шаблоны `.env` |
+| `deploy/backup.sh`                                    | бэкап базы (`pg_dump` через `docker exec`) и картинок; Kamal — каталог, compose — том (`UPLOADS_VOLUME`)                     |
 | `docs/deploy.md`                                      | runbook прода: edge + проекты, второй проект, обновления, бэкапы, Coolify, Postgres на хосте                                 |
 | `config/deploy.yml`, `.kamal/`                        | Kamal: деплой по SSH (service, proxy, registry, env, Postgres-accessory), шаблон `.kamal/secrets`                            |
 | `.github/workflows/deploy.yml`                        | деплой по пушу в `main`: Ruby + Kamal в CI, секреты из GitHub                                                                |
@@ -292,6 +293,8 @@
 - Трогал вики → `GET /wiki/<slug>` отдаёт 200 с отрендеренным markdown (`<h2`, `hljs`, `<table>`), несуществующий
   slug — **404**, анонимный `GET /admin/wiki` — **403**. Загрузка: `curl -F "file=@x.png" …/wiki-image-upload`
   возвращает `/uploads/wiki/<год>/<месяц>/…`, и этот URL открывается как `image/*`.
+- Трогал бэкапы → `deploy/backup.sh` создаёт `db-<дата>.sql.gz` и `uploads-<дата>.tgz`; дамп разворачивается в чистую
+  базу (`psql`), и число строк в `wiki_page` совпадает с исходным (проверено: 7 → 7).
 - Трогал деплой или `/health` → `curl -s http://localhost:3010/health` отдаёт `{"ok":true}` и **200**; останови
   Postgres — тот же запрос отдаёт **503** и `{"ok":false,"database":"unreachable"}` (проверено).
 - Менял UI → `bun run dev` и открыл `http://localhost:3001`: страница рендерится, в консоли браузера нет ошибок.

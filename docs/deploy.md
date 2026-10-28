@@ -185,7 +185,14 @@ Actions), пушит в GHCR, а сервер только тянет. Хоче�
 
 ## Бэкапы
 
-База (том `<проект>_db_data`):
+Один скрипт на оба случая — [`deploy/backup.sh`](../deploy/backup.sh): `pg_dump` + `tar` картинок + удаление старше
+`KEEP_DAYS` (14 по умолчанию). Для compose он берёт картинки из тома:
+
+```bash
+UPLOADS_VOLUME=jarvis-web_uploads DB_CONTAINER=jarvis-web-db-1 deploy/backup.sh
+```
+
+Без скрипта — те же две команды руками. База (том `<проект>_db_data`):
 
 ```bash
 docker compose -f deploy/docker-compose.prod.yml exec -T db \
