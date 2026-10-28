@@ -134,7 +134,7 @@ docker compose -f deploy/docker-compose.prod.yml up -d --no-build
 `git checkout`. Миграции при этом всё равно выполняются в entrypoint контейнера — они лежат в образе.
 
 Про платформу: если сервер amd64, а собираешь на ARM-маке, `DOCKER_DEFAULT_PLATFORM=linux/amd64` обязателен;
-на Windows Docker Desktop контейнеры уже linux/amd64, флаг просто страхует. Первый pull ~1 ГБ, дальше тянутся
+на Windows Docker Desktop контейнеры уже linux/amd64, флаг просто страхует. Первый pull ~860 МБ, дальше тянутся
 только изменённые слои.
 
 В **Kamal** это поведение по умолчанию: `kamal deploy` собирает образ там, где запущен Kamal (у нас — GitHub

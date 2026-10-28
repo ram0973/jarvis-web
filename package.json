@@ -31,7 +31,6 @@
     "@1gr14/error0": "^0.4.8",
     "@1gr14/flat": "^0.1.4",
     "@1gr14/route0": "^0.4.1",
-    "@mdxeditor/editor": "^4.3.4",
     "@point0/basic-auth": "^0.4.2",
     "@point0/cache-control": "^0.4.2",
     "@point0/compiler": "^0.4.2",
@@ -42,14 +41,11 @@
     "@point0/react-dom": "^0.4.2",
     "@prisma/adapter-pg": "^7.10.1",
     "@prisma/client": "^7.9.1",
-    "@tailwindcss/typography": "^0.5.20",
     "@tanstack/react-query": "^5.101.4",
     "@unhead/react": "^3.2.3",
     "better-auth": "^1.7.14",
-    "bun-plugin-tailwind": "^0.1.2",
     "dotenv": "^17.4.2",
     "github-slugger": "^2.0.0",
-    "highlight.js": "^11.12.0",
     "openapi-types": "^12.0.0",
     "prisma": "^7.9.1",
     "react": "^19.2.8",
@@ -61,7 +57,6 @@
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.1",
     "superjson": "^2.2.6",
-    "tailwindcss": "^4.3.3",
     "unhead": "^3.2.3",
     "wouter": "^3.10.0",
     "zod": "^4.4.3"
@@ -80,6 +75,11 @@
     "playwright-core": "^1.64.1",
     "prettier": "^3.9.6",
     "rimraf": "^6.0.1",
-    "typescript": "^7.0.2"
+    "typescript": "^7.0.2",
+    "@mdxeditor/editor": "^4.3.4",
+    "bun-plugin-tailwind": "^0.1.2",
+    "highlight.js": "^11.12.0",
+    "tailwindcss": "^4.3.3",
+    "@tailwindcss/typography": "^0.5.20"
   }
 }

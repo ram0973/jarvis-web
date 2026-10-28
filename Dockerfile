@@ -30,10 +30,17 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # `prisma migrate deploy` runs from the entrypoint, so the Prisma CLI (a production dependency) and the migrations have
-# to travel with the image. Everything else in `dist/` is already bundled. The install cache is dropped in the same
-# layer — it is ~450 MB of tarballs nobody needs at runtime.
+# to travel with the image. Everything else in `dist/` is already bundled. `bun install` still drags in packages that
+# only the CLI's own tooling (Studio, a local dev database) and the build need — they are removed in the same layer, so
+# they never reach the image, and the app is verified to boot and serve without them. The install cache is dropped here
+# too — it is ~450 MB of tarballs nobody needs at runtime.
 COPY package.json bun.lock ./
-RUN bun install --frozen-lockfile --production && rm -rf /root/.bun/install/cache
+RUN bun install --frozen-lockfile --production \
+    && rm -rf /root/.bun/install/cache \
+      node_modules/@electric-sql \
+      node_modules/lowlight \
+      node_modules/@typescript \
+      node_modules/@babel
 
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/prisma.config.ts ./prisma.config.ts
