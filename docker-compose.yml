@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: jarvis
+      POSTGRES_PASSWORD: jarvis
+      POSTGRES_DB: jarvis
+    ports:
+      - '5432:5432'
+    volumes:
+      - jarvis_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U jarvis -d jarvis']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      # Host port is configurable so the container can run next to a local `bun run dev` on :3000.
+      - '${APP_PORT:-3000}:3000'
+    environment:
+      NODE_ENV: production
+      SERVER_PORT: 3000
+      # One origin in production: this server serves the built client itself.
+      SERVER_URL: ${APP_URL:-http://localhost:3000}
+      CLIENT_URL: ${APP_URL:-http://localhost:3000}
+      DATABASE_URL: postgresql://jarvis:jarvis@db:5432/jarvis
+      OPENAPI_CREDENTIALS: ${OPENAPI_CREDENTIALS:-admin:admin}
+      # Secrets come from your local `.env` (compose reads it for substitution); the fallback only keeps a fresh
+      # checkout bootable and must not be used anywhere real.
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:-dev-only-secret-do-not-use-in-production}
+      ADMIN_CREDENTIALS: ${ADMIN_CREDENTIALS:-admin@jarvis.local:jarvis12345}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  jarvis_db:

@@ -1,0 +1,9 @@
+node_modules
+dist
+.git
+.gitignore
+.env
+.env.*
+*.db
+.mcp.json
+FOR_A_REAL_APP.md

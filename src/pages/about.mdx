@@ -1,0 +1,14 @@
+import { generalLayout } from '@/layouts/general'
+
+export const page = generalLayout
+  .lets('page', 'about', '/about')
+  .head('About')
+  .page((props) => (
+    <div className="prose">
+      <MDXContent {...props} />
+    </div>
+  ))
+
+# About My App
+
+My App is the best!

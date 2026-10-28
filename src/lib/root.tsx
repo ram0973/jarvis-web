@@ -1,0 +1,82 @@
+import { basicAuth } from '@point0/basic-auth'
+import { cacheControl } from '@point0/cache-control'
+import { compress } from '@point0/compress'
+import { ClientOnly, Point0 } from '@point0/core'
+import { zodSchemaHelper } from '@point0/core/schema/zod'
+import { openapi } from '@point0/openapi'
+import superjson from 'superjson'
+import { authServer } from '@/lib/auth/server.js'
+import { AppError } from '@/lib/error.js'
+import { serverEnv } from '@/lib/env/server.js'
+import { sharedEnv } from '@/lib/env/shared.js'
+
+export const root = Point0.lets
+  .root()
+  .serverUrl(sharedEnv.SERVER_URL)
+  .clientUrl(sharedEnv.CLIENT_URL)
+  .transformer(superjson)
+  .schemaHelper(zodSchemaHelper())
+  .errorClass(AppError)
+  .prefetchPageOnNavigate('pageDehydratedStateAndClientQuery')
+  .prefetchPageOnLinkHover('pageDehydratedStateAndClientQuery')
+  .queryOptions({
+    retry: false,
+    retryOnMount: false,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+    refetchIntervalInBackground: false,
+    staleTime: 1 * 60 * 1000, // 1 minute
+  })
+  .on('error', ({ side, name, error, meta }) => {
+    console.error({ ...meta, side, name, error })
+  })
+  .head('global', ({ loading, error }) => {
+    return {
+      ...(loading ? { title: 'Loading...' } : {}),
+      ...(error ? { title: error.message } : {}),
+      titleTemplate: '%s | My App',
+      htmlAttrs: { lang: 'en' },
+    }
+  })
+  .loading(() => {
+    return (
+      <div className="mx-auto max-w-3xl">
+        <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">Please wait</p>
+          <p className="mt-1 text-lg font-semibold text-slate-900">Loading...</p>
+        </div>
+      </div>
+    )
+  })
+  .error(({ error }) => {
+    return (
+      <div className="mx-auto max-w-3xl space-y-4">
+        <div className="rounded-xl border border-red-200 bg-red-50 p-5 text-red-900 shadow-sm">
+          <p className="text-sm font-semibold uppercase tracking-wide text-red-700">Something went wrong</p>
+          <p className="mt-2 text-base font-medium">Error: {error.message}</p>
+        </div>
+        <ClientOnly>
+          <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
+            <code>{error.stack}</code>
+          </pre>
+        </ClientOnly>
+      </div>
+    )
+  })
+  .middleware(compress())
+  .middleware(cacheControl())
+  // The whole better-auth route set (sign-up, sign-in, get-session, …) behind one mount. Server-only: `.middleware`
+  // bodies never reach the client bundle, so the handler and its imports are stripped from the browser build.
+  .middleware('/api/auth/*', async ({ request }) => await authServer.handler(request.original))
+  .middleware(
+    openapi({
+      route: '/openapi.json',
+      scalar: '/scalar',
+      swagger: '/swagger',
+      filter: 'all',
+      before: basicAuth({ users: serverEnv.OPENAPI_CREDENTIALS }),
+    }),
+  )
+  .root()

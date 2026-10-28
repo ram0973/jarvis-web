@@ -1,0 +1,13 @@
+# general
+.DS_Store
+.idea
+.vscode
+.cursor
+.gigaide
+
+# custom
+.env*
+src/generated
+node_modules
+dist
+*.db
