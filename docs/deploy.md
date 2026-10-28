@@ -107,6 +107,40 @@ docker compose -f deploy/docker-compose.prod.yml up -d --build
 
 Миграции применяются на старте контейнера. Откат — `git checkout <коммит/тег>` и та же команда.
 
+## Сборка образов отдельно от сервера
+
+Серверу не обязательно собирать приложение: образ можно собрать у себя или в CI, запушить в registry, а на сервер
+только тянуть. В [`docker-compose.prod.yml`](../deploy/docker-compose.prod.yml) у `app` теперь есть `image:`
+рядом с `build:` — работает и так, и так.
+
+Локально (Docker Desktop на Windows/Mac):
+
+```bash
+docker login ghcr.io
+export IMAGE_TAG=2026-10-28          # дата или sha коммита, не «latest»
+DOCKER_DEFAULT_PLATFORM=linux/amd64 docker compose -f deploy/docker-compose.prod.yml build app
+docker compose -f deploy/docker-compose.prod.yml push app
+```
+
+На сервере — без сборки:
+
+```bash
+export IMAGE_TAG=2026-10-28
+docker compose -f deploy/docker-compose.prod.yml pull app
+docker compose -f deploy/docker-compose.prod.yml up -d --no-build
+```
+
+Почему `IMAGE_TAG`, а не `latest`: откат становится `IMAGE_TAG=<прошлый>` + `up -d --no-build`, без пересборки и без
+`git checkout`. Миграции при этом всё равно выполняются в entrypoint контейнера — они лежат в образе.
+
+Про платформу: если сервер amd64, а собираешь на ARM-маке, `DOCKER_DEFAULT_PLATFORM=linux/amd64` обязателен;
+на Windows Docker Desktop контейнеры уже linux/amd64, флаг просто страхует. Первый pull ~1 ГБ, дальше тянутся
+только изменённые слои.
+
+В **Kamal** это поведение по умолчанию: `kamal deploy` собирает образ там, где запущен Kamal (у нас — GitHub
+Actions), пушит в GHCR, а сервер только тянет. Хочешь собирать на сервере — `builder: remote: true` в
+[`config/deploy.yml`](../config/deploy.yml).
+
 ## Бэкапы
 
 База (том `<проект>_db_data`):

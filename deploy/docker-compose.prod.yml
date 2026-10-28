@@ -23,6 +23,9 @@ services:
         max-file: '3'
 
   app:
+    # `build` is for building here (or in CI); `image` lets the server skip building entirely:
+    #   local/CI: docker compose build --push app     server: docker compose pull && up -d --no-build
+    image: ghcr.io/ram0973/jarvis-web:${IMAGE_TAG:-latest}
     build:
       context: ..
       dockerfile: Dockerfile
