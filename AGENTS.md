@@ -84,6 +84,7 @@
 | `deploy/`                                             | прод: `docker-compose.prod.yml` (db + app, общая сеть `edge`), `edge/` (Caddy на весь VPS + `sites/*.caddy`), шаблоны `.env` |
 | `deploy/backup.sh`                                    | бэкап базы (`pg_dump` через `docker exec`) и картинок; Kamal — каталог, compose — том (`UPLOADS_VOLUME`)                     |
 | `docs/deploy.md`                                      | runbook прода: edge + проекты, второй проект, обновления, бэкапы, Coolify, Postgres на хосте                                 |
+| `README_DEPLOY.md`                                    | пошаговая инструкция: dev-запуск, первый прод-деплой, деплой фич, бэкапы/восстановление                                      |
 | `config/deploy.yml`, `.kamal/`                        | Kamal: деплой по SSH (service, proxy, registry, env, Postgres-accessory), шаблон `.kamal/secrets`                            |
 | `.github/workflows/deploy.yml`                        | деплой по пушу в `main`: Ruby + Kamal в CI, секреты из GitHub                                                                |
 | `docs/kamal.md`                                       | runbook Kamal: setup, deploy/rollback, второй проект, бэкапы, отличия от compose                                             |

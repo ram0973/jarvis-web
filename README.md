@@ -3,6 +3,9 @@
 Personal wiki built on Point0 — SSR, Markdown articles, Postgres, type-safe routing, all in TypeScript.
 Sign-in and registration come from better-auth (`HttpOnly` session cookie); the admin panel covers users and articles.
 
+**Start here:** [README_DEPLOY.md](./README_DEPLOY.md) — step-by-step guide for local development, the first production
+deploy, shipping features afterwards, and backups.
+
 ## Run
 
 ```bash
