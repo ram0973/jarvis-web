@@ -123,6 +123,9 @@ bun run dev
 - **`Invalid "server.BETTER_AUTH_SECRET"`** — секрет короче 32 символов, сгенерируй новый.
 - **Пустая страница/странные ошибки `reading 'lets'`** — устаревший HMR-граф: перезапусти `bun run dev`.
 - **Таблиц нет** — забыл `bun run setup` (или `bun run prisma:migrate:deploy`).
+- **`[db] cannot reach PostgreSQL`** при старте — сервер сам проверяет базу и не поднимается, пока её нет. В сообщении
+  есть `reason` и `hint`: обычно это «Docker не запущен» → запусти Docker Desktop и `docker compose up -d db`. Если база
+  есть, но пароль не тот — будет `authentication failed` и подсказка про `POSTGRES_PASSWORD`/`DATABASE_URL`.
 
 ---
 

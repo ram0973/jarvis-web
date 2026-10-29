@@ -56,6 +56,7 @@
 | `src/pages/about.mdx`                                 | страница `/about` в MDX                                                                                                      |
 | `src/lib/navigation.ts`                               | типизированные `Link` / `NavLink` / `navigate` над сгенерированными роутами                                                  |
 | `src/lib/prisma.ts`                                   | Prisma-клиент через `PrismaPg` (Postgres) — только сервер                                                                    |
+| `src/lib/db/check.ts`                                 | preflight базы при старте: `SELECT 1` с ретраями, понятный лог и `exit(1)`, если Postgres недоступен                         |
 | `src/lib/auth/server.ts`                              | `authServer`: better-auth + Prisma-адаптер, admin-плагин, секрет; `getMe` — единственное чтение сессии                       |
 | `src/lib/auth/api.ts`                                 | `getMeQuery` — клиентский `me`, `staleTime: Infinity`, обновляется вручную после входа/выхода                                |
 | `src/lib/auth/client.ts`                              | `authClient` (только браузер, только мутации) и `signOut()`                                                                  |
@@ -285,6 +286,9 @@
 - Менял схему → миграция создана и применена, `bun run prisma:generate` выполнен.
 - Трогал базу → `docker compose ps` показывает `db` в статусе healthy, миграции применены
   (`bun run prisma:migrate:deploy`), а приложение подключается по `DATABASE_URL` из `.env`.
+- Трогал старт/базу → с недоступной базой сервер печатает `[db] cannot reach PostgreSQL at …` с `reason` и `hint` и
+  выходит с кодом **1** (без стека Prisma); с доступной — `[db] connected to postgresql://…` и «Server started».
+  Проверка: `DATABASE_URL=postgresql://…@127.0.0.1:5999/… bun run start`.
 - Трогал вход/сессии → `curl http://localhost:3000/api/auth/ok` отвечает `{"ok":true}`, `POST /api/auth/sign-in/email`
   возвращает пользователя, анонимный `GET /profile` отдаёт `302` на `/sign-in`, а с cookie — профиль.
 - Токен сессии не должен появляться в HTML-пейлоаде: `curl -s http://localhost:3001/profile | Select-String 'session_token='`
